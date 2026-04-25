@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog'
 import { Loader2, Trash2, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
-import type { Obra } from '@/types'
+import type { Obra, Profile } from '@/types'
 
 export default function PermDeleteDialog({ obra }: { obra: Obra }) {
   const router = useRouter()
@@ -17,6 +17,20 @@ export default function PermDeleteDialog({ obra }: { obra: Obra }) {
   const [open, setOpen] = useState(false)
   const [senha, setSenha] = useState('')
   const [loading, setLoading] = useState(false)
+  const [canDelete, setCanDelete] = useState(false)
+
+  useEffect(() => {
+    async function checkPermission() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data } = await supabase.from('profiles').select('can_delete_records').eq('id', user.id).single()
+        if (data?.can_delete_records) {
+          setCanDelete(true)
+        }
+      }
+    }
+    checkPermission()
+  }, [supabase])
 
   async function handleDelete(e: React.FormEvent) {
     e.preventDefault()
@@ -65,13 +79,23 @@ export default function PermDeleteDialog({ obra }: { obra: Obra }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button
-          title="Excluir Definitivamente"
-          className="p-1.5 rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors shadow-sm"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-          <span className="sr-only">Excluir</span>
-        </button>
+        {canDelete ? (
+          <button
+            title="Excluir Definitivamente"
+            className="p-1.5 rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors shadow-sm"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span className="sr-only">Excluir</span>
+          </button>
+        ) : (
+          <button
+            title="Sem permissão para excluir"
+            className="p-1.5 rounded-md bg-muted text-muted-foreground cursor-not-allowed shadow-sm"
+            disabled
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-md border-destructive/20">

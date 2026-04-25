@@ -20,13 +20,35 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 export default async function DashboardPage() {
   const supabase = await createClient()
 
-  const [{ data: obras }, { data: orcamentoItens }, { data: cronogramas }, { data: estoqueTotal }] =
-    await Promise.all([
-      supabase.from('obras').select('*').is('deleted_at', null).order('created_at', { ascending: false }),
-      supabase.from('orcamento_itens').select('obra_id, quantidade, custo_unitario_aplicado'),
-      supabase.from('cronograma').select('obra_id, status'),
-      supabase.from('estoque_logs').select('obra_id, quantidade_entregue'),
-    ])
+  // --- BLOCO DE DEBUG (OLHE O TERMINAL APÓS RODAR) ---
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const [
+    { data: obras, error: obrasError },
+    { data: orcamentoItens, error: orcError },
+    { data: cronogramas },
+    { data: estoqueTotal }
+  ] = await Promise.all([
+    supabase.from('obras').select('*').is('deleted_at', null).order('created_at', { ascending: false }),
+    supabase.from('orcamento_itens').select('obra_id, quantidade, custo_unitario_aplicado'),
+    supabase.from('cronograma').select('obra_id, status'),
+    supabase.from('estoque_logs').select('obra_id, quantidade_entregue'),
+  ])
+
+  console.log("=========================================")
+  console.log("DEBUG DASHBOARD - REZENDE & VIDAL")
+  console.log("ID DO USUÁRIO:", user?.id || "NÃO LOGADO")
+
+  if (obrasError) {
+    console.error("ERRO AO BUSCAR OBRAS:", obrasError.message)
+    console.error("DETALHES:", obrasError.details)
+  } else {
+    console.log("QUANTIDADE DE OBRAS RETORNADAS:", obras?.length || 0)
+  }
+
+  if (orcError) console.error("ERRO EM ORÇAMENTOS:", orcError.message)
+  console.log("=========================================")
+  // --- FIM DO BLOCO DE DEBUG ---
 
   const obrasList = obras ?? []
 

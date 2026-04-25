@@ -219,7 +219,7 @@ export default function OrcamentoTab({ obraId, itens, bdi }: Props) {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
           { label: 'Custo Direto', value: formatCurrency(totalCusto), sub: 'Sem BDI' },
           { label: 'BDI', value: `${bdiTotal.toFixed(2)}%`, sub: 'Taxa aplicada' },

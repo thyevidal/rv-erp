@@ -36,11 +36,21 @@ export default function ObrasActions({ primary }: Props) {
     if (!form.nome.trim()) { toast.error('Informe o nome da obra'); return }
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setLoading(false); return }
+
+    const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single()
+    if (!profile) {
+      toast.error('Perfil de organização não encontrado')
+      setLoading(false)
+      return
+    }
+
     const { error } = await supabase.from('obras').insert({
       ...form,
       data_inicio: form.data_inicio || null,
       data_fim: form.data_fim || null,
-      user_id: user!.id,
+      user_id: user.id,
+      organization_id: profile.organization_id,
     })
     setLoading(false)
     if (error) { toast.error('Erro ao criar obra: ' + error.message); return }

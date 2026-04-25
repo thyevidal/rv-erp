@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import {
-  LayoutDashboard, HardHat, Package, Settings, LogOut, ChevronRight, Building2, Trash2
+  LayoutDashboard, HardHat, Package, Settings, LogOut, ChevronRight, Building2, Trash2, Users
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -17,10 +17,25 @@ const navItems = [
   { href: '/dashboard/lixeira', label: 'Lixeira', icon: Trash2 },
 ]
 
-export default function Sidebar() {
+import { useEffect, useState } from 'react'
+import type { Profile } from '@/types'
+
+export default function Sidebar({ className }: { className?: string }) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const [profile, setProfile] = useState<Profile | null>(null)
+
+  useEffect(() => {
+    async function loadProfile() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+        setProfile(data as Profile)
+      }
+    }
+    loadProfile()
+  }, [supabase])
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -29,7 +44,7 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="flex flex-col w-64 min-h-screen bg-sidebar border-r border-sidebar-border">
+    <aside className={cn("flex flex-col min-h-screen bg-sidebar border-r border-sidebar-border", className)}>
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-sidebar-border">
         <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary shadow-md shadow-primary/30 shrink-0">
@@ -46,7 +61,7 @@ export default function Sidebar() {
         <p className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/30 px-3 pb-2">
           Menu Principal
         </p>
-        {navItems.map((item) => {
+        {[...navItems, ...(profile?.role === 'admin' ? [{ href: '/dashboard/configuracoes/membros', label: 'Membros', icon: Users }] : [])].map((item) => {
           const active = item.href === '/dashboard'
             ? pathname === '/dashboard'
             : pathname.startsWith(item.href)

@@ -10,6 +10,7 @@ import CurvaABCTab from '@/components/obras/CurvaABCTab'
 import MapaColetaTab from '@/components/obras/MapaColetaTab'
 import EstoqueTab from '@/components/obras/EstoqueTab'
 import ObraHeaderActions from '@/components/obras/ObraHeaderActions'
+import { getCurrentProfile } from '@/lib/supabase/profile'
 
 const STATUS_MAP: Record<string, { label: string; classes: string }> = {
   PLANEJAMENTO: { label: 'Planejamento', classes: 'bg-blue-500/10 text-blue-400 border-blue-500/30' },
@@ -22,6 +23,8 @@ const STATUS_MAP: Record<string, { label: string; classes: string }> = {
 export default async function ObraDetailPage({ params }: { params: { id: string } }) {
   const supabase = await createClient()
   const { id } = await params
+  
+  const profile = await getCurrentProfile()
 
   const [{ data: obra }, { data: bdi }, { data: itens }, { data: cronos }, { data: coleta }, { data: estoque }] =
     await Promise.all([
@@ -64,7 +67,9 @@ export default async function ObraDetailPage({ params }: { params: { id: string 
                 {formatDate(obra.data_inicio)} → {formatDate(obra.data_fim)}
               </span>
             )}
-            <span className="font-semibold text-foreground">Total: {formatCurrency(totalCusto)}</span>
+            {profile?.can_view_finance && (
+              <span className="font-semibold text-foreground">Total: {formatCurrency(totalCusto)}</span>
+            )}
           </div>
         </div>
 
@@ -73,25 +78,29 @@ export default async function ObraDetailPage({ params }: { params: { id: string 
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="orcamento" className="w-full">
-        <TabsList className="mb-6">
-          <TabsTrigger value="orcamento">Orçamento</TabsTrigger>
+      <Tabs defaultValue={profile?.can_view_finance ? 'orcamento' : 'cronograma'} className="w-full">
+        <TabsList className="mb-6 flex flex-wrap h-auto">
+          {profile?.can_view_finance && <TabsTrigger value="orcamento">Orçamento</TabsTrigger>}
           <TabsTrigger value="cronograma">Cronograma</TabsTrigger>
-          <TabsTrigger value="curva-abc">Curva ABC</TabsTrigger>
+          {profile?.can_view_finance && <TabsTrigger value="curva-abc">Curva ABC</TabsTrigger>}
           <TabsTrigger value="mapa-coleta">Mapa de Coleta</TabsTrigger>
           <TabsTrigger value="estoque">Recebimento</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="orcamento">
-          <OrcamentoTab obraId={id} itens={itens ?? []} bdi={bdi} />
-        </TabsContent>
+        {profile?.can_view_finance && (
+          <>
+            <TabsContent value="orcamento">
+              <OrcamentoTab obraId={id} itens={itens ?? []} bdi={bdi} />
+            </TabsContent>
+            
+            <TabsContent value="curva-abc">
+              <CurvaABCTab itens={itens ?? []} />
+            </TabsContent>
+          </>
+        )}
 
         <TabsContent value="cronograma">
           <CronogramaTab obraId={id} tarefas={cronos ?? []} />
-        </TabsContent>
-
-        <TabsContent value="curva-abc">
-          <CurvaABCTab itens={itens ?? []} />
         </TabsContent>
 
         <TabsContent value="mapa-coleta">

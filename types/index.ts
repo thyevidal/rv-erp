@@ -7,6 +7,27 @@ export type ItemTipo = 'MATERIAL' | 'MAO_DE_OBRA'
 export type CronoStatus = 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDA' | 'ATRASADA'
 export type CurvaABCClasse = 'A' | 'B' | 'C'
 
+// ---- Organizations & Profiles ----
+export type UserRole = 'admin' | 'member'
+
+export interface Organization {
+  id: string
+  name: string
+  created_at: string
+}
+
+export interface Profile {
+  id: string
+  organization_id: string
+  name: string | null
+  email?: string | null
+  role: UserRole
+  can_view_finance: boolean
+  can_delete_records: boolean
+  can_edit_inventory: boolean
+  created_at: string
+}
+
 // ---- Obras ----
 export interface Obra {
   id: string
@@ -20,6 +41,7 @@ export interface Obra {
   created_at: string
   updated_at: string
   user_id: string
+  organization_id: string
 }
 export type ObraInsert = Omit<Obra, 'id' | 'created_at' | 'updated_at'>
 export type ObraUpdate = Partial<ObraInsert>
@@ -49,6 +71,7 @@ export interface InsumoBase {
   created_at: string
   updated_at: string
   user_id: string
+  organization_id: string
 }
 export type InsumoInsert = Omit<InsumoBase, 'id' | 'created_at' | 'updated_at'>
 export type InsumoUpdate = Partial<InsumoInsert>
@@ -131,6 +154,7 @@ export interface EstoqueLog {
   observacao?: string | null
   created_at: string
   user_id: string
+  organization_id: string
 }
 export type EstoqueLogInsert = Omit<EstoqueLog, 'id' | 'created_at'>
 

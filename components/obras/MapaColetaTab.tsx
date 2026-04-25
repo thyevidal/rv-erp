@@ -147,11 +147,11 @@ export default function MapaColetaTab({ obraId, itens, coleta }: Props) {
               </CardContent>
             ) : (
               <CardContent className="p-0">
-                <div className="grid divide-x" style={{ gridTemplateColumns: `repeat(${cotacoes.length}, 1fr)` }}>
+                <div className="flex overflow-x-auto divide-x snap-x snap-mandatory pb-2 sm:pb-0">
                   {cotacoes.map((c) => {
                     const isMelhor = menorPreco?.id === c.id
                     return (
-                      <div key={c.id} className={`p-4 space-y-2 ${c.selecionado ? 'bg-primary/5' : ''}`}>
+                      <div key={c.id} className={`p-4 space-y-2 min-w-[260px] sm:min-w-[33%] shrink-0 snap-start ${c.selecionado ? 'bg-primary/5' : ''}`}>
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <p className="font-semibold text-sm">{c.fornecedor}</p>
