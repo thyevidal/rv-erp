@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -12,9 +12,9 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
 import { formatCurrency, calcBdiPrecoVenda } from '@/lib/utils'
-import type { OrcamentoItem, BdiConfig } from '@/types'
+import type { OrcamentoItem, BdiConfig, InsumoBase } from '@/types'
 import {
-  Plus, Trash2, ChevronDown, ChevronRight, Upload, Settings2, Loader2, FileSpreadsheet, Pencil
+  Plus, Trash2, ChevronDown, ChevronRight, Settings2, Loader2, FileSpreadsheet, Pencil, Search, X
 } from 'lucide-react'
 import { toast } from 'sonner'
 import * as XLSX from 'xlsx'
@@ -47,9 +47,10 @@ const EMPTY_ROW: {
   custo_unitario_aplicado: string
   tipo: 'MATERIAL' | 'MAO_DE_OBRA'
   observacao: string
+  insumo_id?: string | null
 } = {
   etapa: '', subetapa: '', descricao: '', unidade: 'un',
-  quantidade: '', custo_unitario_aplicado: '', tipo: 'MATERIAL', observacao: ''
+  quantidade: '', custo_unitario_aplicado: '', tipo: 'MATERIAL', observacao: '', insumo_id: null
 }
 
 export default function OrcamentoTab({ obraId, itens, bdi }: Props) {
@@ -62,6 +63,12 @@ export default function OrcamentoTab({ obraId, itens, bdi }: Props) {
   const [bdiOpen, setBdiOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [row, setRow] = useState({ ...EMPTY_ROW })
+
+  // Banco de insumos — autocomplete
+  const [insumos, setInsumos] = useState<InsumoBase[]>([])
+  const [insumoSearch, setInsumoSearch] = useState('')
+  const [showSuggestions, setShowSuggestions] = useState(false)
+
   const [bdiForm, setBdiForm] = useState({
     impostos: bdi?.impostos ?? 8.65,
     margem_lucro: bdi?.margem_lucro ?? 15,
@@ -73,6 +80,39 @@ export default function OrcamentoTab({ obraId, itens, bdi }: Props) {
   const groups = groupByEtapa(itens)
   const totalCusto = itens.reduce((a, i) => a + i.quantidade * i.custo_unitario_aplicado, 0)
   const totalVenda = calcBdiPrecoVenda(totalCusto, bdiTotal)
+
+  // Carrega insumos quando o dialog abre
+  useEffect(() => {
+    if (!addOpen) return
+    supabase.from('insumos_base').select('*').order('descricao').then(({ data }) => {
+      setInsumos(data ?? [])
+    })
+  }, [addOpen])
+
+  // Filtra sugestões
+  const sugestoes = insumoSearch.length >= 2
+    ? insumos.filter((i) =>
+      i.descricao.toLowerCase().includes(insumoSearch.toLowerCase()) ||
+      (i.categoria ?? '').toLowerCase().includes(insumoSearch.toLowerCase())
+    ).slice(0, 6)
+    : []
+
+  function selecionarInsumo(insumo: InsumoBase) {
+    setRow((p) => ({
+      ...p,
+      descricao: insumo.descricao,
+      unidade: insumo.unidade,
+      custo_unitario_aplicado: String(insumo.custo_unitario),
+      insumo_id: insumo.id,
+    }))
+    setInsumoSearch(insumo.descricao)
+    setShowSuggestions(false)
+  }
+
+  function limparInsumo() {
+    setInsumoSearch('')
+    setRow((p) => ({ ...p, insumo_id: null }))
+  }
 
   function setRow_(k: string, v: string) { setRow((p) => ({ ...p, [k]: v })) }
 
@@ -87,6 +127,7 @@ export default function OrcamentoTab({ obraId, itens, bdi }: Props) {
   function openAddForEtapa(e: React.MouseEvent, etapa: string) {
     e.stopPropagation()
     setRow({ ...EMPTY_ROW, etapa })
+    setInsumoSearch('')
     setAddOpen(true)
   }
 
@@ -101,7 +142,9 @@ export default function OrcamentoTab({ obraId, itens, bdi }: Props) {
       custo_unitario_aplicado: String(item.custo_unitario_aplicado),
       tipo: item.tipo,
       observacao: item.observacao ?? '',
+      insumo_id: item.insumo_id ?? null,
     })
+    setInsumoSearch(item.descricao)
     setAddOpen(true)
   }
 
@@ -109,7 +152,7 @@ export default function OrcamentoTab({ obraId, itens, bdi }: Props) {
     e.preventDefault()
     if (!row.descricao || !row.etapa) { toast.error('Informe etapa e descrição'); return }
     setLoading(true)
-    
+
     const payload = {
       obra_id: obraId,
       etapa: row.etapa,
@@ -120,9 +163,10 @@ export default function OrcamentoTab({ obraId, itens, bdi }: Props) {
       custo_unitario_aplicado: parseFloat(row.custo_unitario_aplicado) || 0,
       tipo: row.tipo,
       observacao: row.observacao || null,
+      insumo_id: row.insumo_id ?? null,
     }
 
-    const { error } = row.id 
+    const { error } = row.id
       ? await supabase.from('orcamento_itens').update(payload).eq('id', row.id)
       : await supabase.from('orcamento_itens').insert(payload)
 
@@ -131,6 +175,7 @@ export default function OrcamentoTab({ obraId, itens, bdi }: Props) {
     toast.success(row.id ? 'Item atualizado!' : 'Item adicionado!')
     setAddOpen(false)
     setRow({ ...EMPTY_ROW })
+    setInsumoSearch('')
     router.refresh()
   }
 
@@ -203,6 +248,7 @@ export default function OrcamentoTab({ obraId, itens, bdi }: Props) {
         <div className="flex gap-2">
           <Button size="sm" className="gap-1.5" onClick={() => {
             setRow({ ...EMPTY_ROW })
+            setInsumoSearch('')
             setAddOpen(true)
           }}>
             <Plus className="w-3.5 h-3.5" /> Adicionar Item
@@ -219,7 +265,7 @@ export default function OrcamentoTab({ obraId, itens, bdi }: Props) {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {[
           { label: 'Custo Direto', value: formatCurrency(totalCusto), sub: 'Sem BDI' },
           { label: 'BDI', value: `${bdiTotal.toFixed(2)}%`, sub: 'Taxa aplicada' },
@@ -251,7 +297,6 @@ export default function OrcamentoTab({ obraId, itens, bdi }: Props) {
             const mao = group.itens.filter((i) => i.tipo === 'MAO_DE_OBRA')
             return (
               <Card key={group.etapa} className="border-border/60 overflow-hidden">
-                {/* Etapa header */}
                 <div
                   className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors"
                   onClick={() => toggleCollapse(group.etapa)}
@@ -263,9 +308,9 @@ export default function OrcamentoTab({ obraId, itens, bdi }: Props) {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-sm font-semibold">{formatCurrency(groupTotal)}</span>
-                    <Button 
-                      size="icon" 
-                      variant="ghost" 
+                    <Button
+                      size="icon"
+                      variant="ghost"
                       className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
                       onClick={(e) => openAddForEtapa(e, group.etapa)}
                       title="Adicionar item nesta etapa"
@@ -277,7 +322,6 @@ export default function OrcamentoTab({ obraId, itens, bdi }: Props) {
 
                 {!isCollapsed && (
                   <div className="border-t">
-                    {/* Materiais */}
                     {mat.length > 0 && (
                       <div>
                         <div className="px-4 py-1.5 bg-muted/20 text-[11px] font-semibold uppercase text-muted-foreground tracking-wider">
@@ -330,37 +374,39 @@ export default function OrcamentoTab({ obraId, itens, bdi }: Props) {
                       </div>
                     )}
 
-                    {/* Mão de Obra */}
                     {mao.length > 0 && (
                       <div>
-                        <div className="px-4 py-1.5 bg-blue-500/5 text-[11px] font-semibold uppercase text-blue-400 tracking-wider border-t">
-                          Mão de Obra / Empreiteiras
+                        <div className="px-4 py-1.5 bg-muted/20 text-[11px] font-semibold uppercase text-muted-foreground tracking-wider">
+                          Mão de Obra / Empreiteira
                         </div>
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="text-muted-foreground text-xs border-b">
-                                <th className="text-left px-4 py-2 font-medium">Serviço</th>
+                                <th className="text-left px-4 py-2 font-medium">Descrição</th>
                                 <th className="text-center px-2 py-2 font-medium">Un.</th>
                                 <th className="text-right px-2 py-2 font-medium">Qtd</th>
-                                <th className="text-right px-2 py-2 font-medium">Valor Unit.</th>
-                                <th className="text-right px-4 py-2 font-medium">Total</th>
+                                <th className="text-right px-2 py-2 font-medium">Custo Unit.</th>
+                                <th className="text-right px-2 py-2 font-medium">Total Custo</th>
+                                <th className="text-right px-4 py-2 font-medium">P. Venda</th>
                                 <th className="px-2 py-2" />
                               </tr>
                             </thead>
                             <tbody>
                               {mao.map((item) => {
                                 const tc = item.quantidade * item.custo_unitario_aplicado
+                                const tv = calcBdiPrecoVenda(tc, bdiTotal)
                                 return (
                                   <tr key={item.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                                     <td className="px-4 py-2.5">
                                       <div className="font-medium text-sm">{item.descricao}</div>
-                                      {item.observacao && <div className="text-xs text-muted-foreground">{item.observacao}</div>}
+                                      {item.subetapa && <div className="text-xs text-muted-foreground">{item.subetapa}</div>}
                                     </td>
                                     <td className="text-center px-2 py-2.5 text-muted-foreground">{item.unidade}</td>
                                     <td className="text-right px-2 py-2.5">{item.quantidade}</td>
                                     <td className="text-right px-2 py-2.5">{formatCurrency(item.custo_unitario_aplicado)}</td>
-                                    <td className="text-right px-4 py-2.5 font-semibold">{formatCurrency(tc)}</td>
+                                    <td className="text-right px-2 py-2.5 font-medium">{formatCurrency(tc)}</td>
+                                    <td className="text-right px-4 py-2.5 font-semibold text-primary">{formatCurrency(tv)}</td>
                                     <td className="px-2 py-2.5 flex items-center justify-end gap-1">
                                       <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
                                         onClick={() => openEditItem(item)}>
@@ -387,11 +433,64 @@ export default function OrcamentoTab({ obraId, itens, bdi }: Props) {
         </div>
       )}
 
-      {/* Add Item Dialog */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      {/* Add/Edit Item Dialog */}
+      <Dialog open={addOpen} onOpenChange={(open) => { setAddOpen(open); if (!open) { setInsumoSearch(''); setShowSuggestions(false) } }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader><DialogTitle>{row.id ? 'Editar Item' : 'Adicionar Item'}</DialogTitle></DialogHeader>
           <form onSubmit={handleAddItem} className="space-y-3 pt-2">
+
+            {/* Autocomplete banco de insumos */}
+            <div className="space-y-1.5">
+              <Label>Buscar no Banco de Insumos</Label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
+                <Input
+                  value={insumoSearch}
+                  onChange={(e) => {
+                    setInsumoSearch(e.target.value)
+                    setShowSuggestions(true)
+                    // Se apagou tudo, limpa o vínculo
+                    if (!e.target.value) setRow((p) => ({ ...p, insumo_id: null }))
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  placeholder="Digite para buscar um insumo cadastrado..."
+                  className="pl-8 pr-8"
+                />
+                {insumoSearch && (
+                  <button type="button" onClick={limparInsumo} className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                {showSuggestions && sugestoes.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-md overflow-hidden">
+                    {sugestoes.map((insumo) => (
+                      <button
+                        key={insumo.id}
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors flex items-center justify-between gap-2"
+                        onClick={() => selecionarInsumo(insumo)}
+                      >
+                        <div>
+                          <span className="font-medium">{insumo.descricao}</span>
+                          {insumo.categoria && <span className="text-xs text-muted-foreground ml-2">{insumo.categoria}</span>}
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="text-xs text-muted-foreground">{insumo.unidade}</span>
+                          <span className="text-xs font-semibold text-primary ml-2">{formatCurrency(insumo.custo_unitario)}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {row.insumo_id && (
+                <p className="text-xs text-green-500">✓ Vinculado ao banco de insumos</p>
+              )}
+              <p className="text-xs text-muted-foreground">Opcional — selecione para preencher automaticamente ou preencha manualmente abaixo.</p>
+            </div>
+
+            <Separator />
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Etapa *</Label>

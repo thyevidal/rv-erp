@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, calcBdiPrecoVenda } from '@/lib/utils'
 import {
   HardHat, TrendingUp, DollarSign, Activity, AlertTriangle,
   CheckCircle2, Clock, PauseCircle
@@ -20,54 +19,44 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 export default async function DashboardPage() {
   const supabase = await createClient()
 
-  // --- BLOCO DE DEBUG (OLHE O TERMINAL APÓS RODAR) ---
-  const { data: { user } } = await supabase.auth.getUser()
-
-  const [
-    { data: obras, error: obrasError },
-    { data: orcamentoItens, error: orcError },
-    { data: cronogramas },
-    { data: estoqueTotal }
-  ] = await Promise.all([
-    supabase.from('obras').select('*').is('deleted_at', null).order('created_at', { ascending: false }),
-    supabase.from('orcamento_itens').select('obra_id, quantidade, custo_unitario_aplicado'),
-    supabase.from('cronograma').select('obra_id, status'),
-    supabase.from('estoque_logs').select('obra_id, quantidade_entregue'),
-  ])
-
-  console.log("=========================================")
-  console.log("DEBUG DASHBOARD - REZENDE & VIDAL")
-  console.log("ID DO USUÁRIO:", user?.id || "NÃO LOGADO")
-
-  if (obrasError) {
-    console.error("ERRO AO BUSCAR OBRAS:", obrasError.message)
-    console.error("DETALHES:", obrasError.details)
-  } else {
-    console.log("QUANTIDADE DE OBRAS RETORNADAS:", obras?.length || 0)
-  }
-
-  if (orcError) console.error("ERRO EM ORÇAMENTOS:", orcError.message)
-  console.log("=========================================")
-  // --- FIM DO BLOCO DE DEBUG ---
+  const [{ data: obras }, { data: orcamentoItens }, { data: cronogramas }, { data: bdis }] =
+    await Promise.all([
+      supabase.from('obras').select('*').is('deleted_at', null).order('created_at', { ascending: false }),
+      supabase.from('orcamento_itens').select('obra_id, quantidade, custo_unitario_aplicado'),
+      supabase.from('cronograma').select('obra_id, status'),
+      supabase.from('bdi_config').select('obra_id, bdi_total'),
+    ])
 
   const obrasList = obras ?? []
+  const bdiMap = new Map((bdis ?? []).map((b) => [b.obra_id, b.bdi_total]))
 
-  // KPIs
+  // Calcula custo direto e valor de venda por obra
+  const custosPorObra = new Map<string, number>()
+  for (const item of orcamentoItens ?? []) {
+    const atual = custosPorObra.get(item.obra_id) ?? 0
+    custosPorObra.set(item.obra_id, atual + item.quantidade * item.custo_unitario_aplicado)
+  }
+
+  // Total de venda = soma de cada obra com seu próprio BDI
+  let totalVendaGeral = 0
+  let totalCustoGeral = 0
+  for (const obra of obrasList) {
+    const custo = custosPorObra.get(obra.id) ?? 0
+    const bdi = bdiMap.get(obra.id) ?? 0
+    totalVendaGeral += calcBdiPrecoVenda(custo, bdi)
+    totalCustoGeral += custo
+  }
+
+  const roi = totalCustoGeral > 0
+    ? ((totalVendaGeral - totalCustoGeral) / totalCustoGeral) * 100
+    : 0
+
   const obrasAtivas = obrasList.filter((o) => o.status === 'EM_ANDAMENTO').length
   const totalObras = obrasList.length
-
-  const totalOrcamento = (orcamentoItens ?? []).reduce(
-    (acc, item) => acc + item.quantidade * item.custo_unitario_aplicado, 0
-  )
 
   const totalTarefas = (cronogramas ?? []).length
   const tarefasConcluidas = (cronogramas ?? []).filter((c) => c.status === 'CONCLUIDA').length
   const idp = totalTarefas > 0 ? (tarefasConcluidas / totalTarefas) * 100 : 0
-
-  // ROI placeholder (custo → venda via BDI médio 25%)
-  const bdiMedio = 0.25
-  const totalVenda = totalOrcamento / (1 - bdiMedio)
-  const roi = totalOrcamento > 0 ? ((totalVenda - totalOrcamento) / totalOrcamento) * 100 : 0
 
   const kpis = [
     {
@@ -80,8 +69,8 @@ export default async function DashboardPage() {
     },
     {
       title: 'Orçamento Total',
-      value: formatCurrency(totalOrcamento),
-      sub: 'Custo direto acumulado',
+      value: formatCurrency(totalVendaGeral),
+      sub: 'Preço de venda acumulado',
       icon: DollarSign,
       color: 'text-green-500',
       bg: 'bg-green-500/10',
@@ -104,28 +93,27 @@ export default async function DashboardPage() {
     },
   ]
 
-  // Dados para gráficos
   const statusCount = Object.entries(STATUS_CONFIG).map(([status, cfg]) => ({
     name: cfg.label,
     value: obrasList.filter((o) => o.status === status).length,
   }))
 
-  const obrasBars = obrasList.slice(0, 6).map((o) => ({
-    name: o.nome.length > 18 ? o.nome.slice(0, 18) + '…' : o.nome,
-    custo: (orcamentoItens ?? [])
-      .filter((i) => i.obra_id === o.id)
-      .reduce((acc, i) => acc + i.quantidade * i.custo_unitario_aplicado, 0),
-  }))
+  const obrasBars = obrasList.slice(0, 6).map((o) => {
+    const custo = custosPorObra.get(o.id) ?? 0
+    const bdi = bdiMap.get(o.id) ?? 0
+    return {
+      name: o.nome.length > 18 ? o.nome.slice(0, 18) + '…' : o.nome,
+      custo: calcBdiPrecoVenda(custo, bdi),
+    }
+  })
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground mt-0.5">Visão geral das obras e indicadores do sistema.</p>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi) => {
           const Icon = kpi.icon
@@ -146,10 +134,8 @@ export default async function DashboardPage() {
         })}
       </div>
 
-      {/* Charts */}
       <DashboardCharts statusData={statusCount} obrasData={obrasBars} />
 
-      {/* Obras Recentes */}
       <div>
         <h2 className="text-lg font-semibold mb-4">Obras Recentes</h2>
         {obrasList.length === 0 ? (
@@ -167,9 +153,9 @@ export default async function DashboardPage() {
             {obrasList.slice(0, 6).map((obra) => {
               const cfg = STATUS_CONFIG[obra.status] ?? STATUS_CONFIG.PLANEJAMENTO
               const StatusIcon = cfg.icon
-              const custoObra = (orcamentoItens ?? [])
-                .filter((i) => i.obra_id === obra.id)
-                .reduce((acc, i) => acc + i.quantidade * i.custo_unitario_aplicado, 0)
+              const custo = custosPorObra.get(obra.id) ?? 0
+              const bdi = bdiMap.get(obra.id) ?? 0
+              const venda = calcBdiPrecoVenda(custo, bdi)
               return (
                 <Link key={obra.id} href={`/dashboard/obras/${obra.id}`}>
                   <Card className="border-border/60 hover:border-primary/40 hover:shadow-md transition-all cursor-pointer h-full">
@@ -187,8 +173,8 @@ export default async function DashboardPage() {
                     </CardHeader>
                     <CardContent className="pt-0">
                       <div className="flex justify-between items-center text-sm border-t pt-3">
-                        <span className="text-muted-foreground">Orçamento</span>
-                        <span className="font-semibold text-foreground">{formatCurrency(custoObra)}</span>
+                        <span className="text-muted-foreground">Preço de Venda</span>
+                        <span className="font-semibold text-foreground">{formatCurrency(venda)}</span>
                       </div>
                     </CardContent>
                   </Card>

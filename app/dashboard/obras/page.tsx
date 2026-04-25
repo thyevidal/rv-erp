@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { HardHat } from 'lucide-react'
 import ObrasActions from '@/components/obras/ObrasActions'
 import ObraCard from '@/components/obras/ObraCard'
+import { calcBdiPrecoVenda } from '@/lib/utils'
 
 export default async function ObrasPage() {
   const supabase = await createClient()
@@ -10,8 +11,11 @@ export default async function ObrasPage() {
     .from('obras').select('*').is('deleted_at', null).order('created_at', { ascending: false })
   const { data: itens } = await supabase
     .from('orcamento_itens').select('obra_id, quantidade, custo_unitario_aplicado')
+  const { data: bdis } = await supabase
+    .from('bdi_config').select('obra_id, bdi_total')
 
   const obrasList = obras ?? []
+  const bdiMap = new Map((bdis ?? []).map((b) => [b.obra_id, b.bdi_total]))
 
   return (
     <div className="space-y-6">
@@ -42,7 +46,9 @@ export default async function ObrasPage() {
             const custo = (itens ?? [])
               .filter((i) => i.obra_id === obra.id)
               .reduce((a, i) => a + i.quantidade * i.custo_unitario_aplicado, 0)
-            return <ObraCard key={obra.id} obra={obra} custo={custo} />
+            const bdiTotal = bdiMap.get(obra.id) ?? 0
+            const venda = calcBdiPrecoVenda(custo, bdiTotal)
+            return <ObraCard key={obra.id} obra={obra} custo={venda} />
           })}
         </div>
       )}

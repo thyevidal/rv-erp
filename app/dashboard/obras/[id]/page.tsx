@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { formatDate, formatCurrency } from '@/lib/utils'
+import { formatDate, formatCurrency, calcBdiPrecoVenda } from '@/lib/utils'
 import { MapPin, Calendar, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import OrcamentoTab from '@/components/obras/OrcamentoTab'
@@ -10,21 +10,18 @@ import CurvaABCTab from '@/components/obras/CurvaABCTab'
 import MapaColetaTab from '@/components/obras/MapaColetaTab'
 import EstoqueTab from '@/components/obras/EstoqueTab'
 import ObraHeaderActions from '@/components/obras/ObraHeaderActions'
-import { getCurrentProfile } from '@/lib/supabase/profile'
 
 const STATUS_MAP: Record<string, { label: string; classes: string }> = {
   PLANEJAMENTO: { label: 'Planejamento', classes: 'bg-blue-500/10 text-blue-400 border-blue-500/30' },
   EM_ANDAMENTO: { label: 'Em Andamento', classes: 'bg-primary/10 text-primary border-primary/30' },
-  PAUSADA:      { label: 'Pausada',      classes: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30' },
-  CONCLUIDA:    { label: 'Concluída',    classes: 'bg-green-500/10 text-green-400 border-green-500/30' },
-  CANCELADA:    { label: 'Cancelada',    classes: 'bg-red-500/10 text-red-400 border-red-500/30' },
+  PAUSADA: { label: 'Pausada', classes: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30' },
+  CONCLUIDA: { label: 'Concluída', classes: 'bg-green-500/10 text-green-400 border-green-500/30' },
+  CANCELADA: { label: 'Cancelada', classes: 'bg-red-500/10 text-red-400 border-red-500/30' },
 }
 
 export default async function ObraDetailPage({ params }: { params: { id: string } }) {
   const supabase = await createClient()
   const { id } = await params
-  
-  const profile = await getCurrentProfile()
 
   const [{ data: obra }, { data: bdi }, { data: itens }, { data: cronos }, { data: coleta }, { data: estoque }] =
     await Promise.all([
@@ -40,6 +37,8 @@ export default async function ObraDetailPage({ params }: { params: { id: string 
 
   const cfg = STATUS_MAP[obra.status] ?? STATUS_MAP.PLANEJAMENTO
   const totalCusto = (itens ?? []).reduce((a, i) => a + i.quantidade * i.custo_unitario_aplicado, 0)
+  const bdiTotal = bdi?.bdi_total ?? 0
+  const totalVenda = calcBdiPrecoVenda(totalCusto, bdiTotal)
 
   return (
     <div className="space-y-6">
@@ -67,40 +66,33 @@ export default async function ObraDetailPage({ params }: { params: { id: string 
                 {formatDate(obra.data_inicio)} → {formatDate(obra.data_fim)}
               </span>
             )}
-            {profile?.can_view_finance && (
-              <span className="font-semibold text-foreground">Total: {formatCurrency(totalCusto)}</span>
-            )}
+            <span className="font-semibold text-foreground">Total: {formatCurrency(totalVenda)}</span>
           </div>
         </div>
 
-        {/* Botões de ação (client component) */}
         <ObraHeaderActions obra={obra} />
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue={profile?.can_view_finance ? 'orcamento' : 'cronograma'} className="w-full">
-        <TabsList className="mb-6 flex flex-wrap h-auto">
-          {profile?.can_view_finance && <TabsTrigger value="orcamento">Orçamento</TabsTrigger>}
+      <Tabs defaultValue="orcamento" className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="orcamento">Orçamento</TabsTrigger>
           <TabsTrigger value="cronograma">Cronograma</TabsTrigger>
-          {profile?.can_view_finance && <TabsTrigger value="curva-abc">Curva ABC</TabsTrigger>}
+          <TabsTrigger value="curva-abc">Curva ABC</TabsTrigger>
           <TabsTrigger value="mapa-coleta">Mapa de Coleta</TabsTrigger>
           <TabsTrigger value="estoque">Recebimento</TabsTrigger>
         </TabsList>
 
-        {profile?.can_view_finance && (
-          <>
-            <TabsContent value="orcamento">
-              <OrcamentoTab obraId={id} itens={itens ?? []} bdi={bdi} />
-            </TabsContent>
-            
-            <TabsContent value="curva-abc">
-              <CurvaABCTab itens={itens ?? []} />
-            </TabsContent>
-          </>
-        )}
+        <TabsContent value="orcamento">
+          <OrcamentoTab obraId={id} itens={itens ?? []} bdi={bdi} />
+        </TabsContent>
 
         <TabsContent value="cronograma">
           <CronogramaTab obraId={id} tarefas={cronos ?? []} />
+        </TabsContent>
+
+        <TabsContent value="curva-abc">
+          <CurvaABCTab itens={itens ?? []} />
         </TabsContent>
 
         <TabsContent value="mapa-coleta">
