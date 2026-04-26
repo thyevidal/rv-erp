@@ -111,7 +111,7 @@ export default function InsumosPage() {
           precoAntigo: editing.custo_unitario,
           itens: itensVinculados.map((i) => ({
             id: i.id,
-            obra_nome: (i.obras as { nome: string }).nome,
+            obra_nome: (i.obras as unknown as { nome: string; status: string }).nome,
             descricao: i.descricao,
           })),
           payload: { ...payload, user_id: undefined },
