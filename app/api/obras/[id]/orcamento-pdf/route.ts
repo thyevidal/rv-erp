@@ -12,7 +12,7 @@ export async function GET(
 
     const [{ data: obra }, { data: bdi }, { data: itens }, { data: cronogramas }] = await Promise.all([
         supabase.from('obras').select('*').eq('id', id).single(),
-        supabase.from('bdi_config').select('*').eq('obra_id', id).maybeSingle(),
+        supabase.from('bdi_config').select('bdi_total, impostos, margem_lucro, seguros, custos_indiretos').eq('obra_id', id).maybeSingle(),
         supabase.from('orcamento_itens').select('*').eq('obra_id', id).order('etapa').order('created_at'),
         supabase.from('cronograma').select('tarefa').eq('obra_id', id).order('data_prevista_inicio'),
     ])
