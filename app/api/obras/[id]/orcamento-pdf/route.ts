@@ -21,7 +21,7 @@ export async function GET(
         return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 })
     }
 
-    const buffer = await renderToBuffer(
+    const rawBuffer = await renderToBuffer(
         OrcamentoPDFDocument({
             obra,
             bdi,
@@ -29,6 +29,8 @@ export async function GET(
             cronogramas: cronogramas ?? [],
         })
     )
+
+    const buffer = new Uint8Array(rawBuffer)
 
     return new NextResponse(buffer, {
         headers: {
