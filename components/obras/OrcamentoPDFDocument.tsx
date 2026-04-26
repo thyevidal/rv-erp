@@ -309,6 +309,15 @@ const styles = StyleSheet.create({
         flex: 1,
     },
 
+    miniHeaderAccent: {
+        position: 'absolute',
+        top: 44,
+        left: 0,
+        right: 0,
+        height: 3,
+        backgroundColor: '#e07b2a',
+    },
+
     // Footer
     footer: {
         position: 'absolute',
@@ -435,8 +444,6 @@ export function OrcamentoPDFDocument({ obra, bdi, itens, cronogramas }: Props) {
                 </View>
 
                 <View style={styles.accentBar} />
-
-                <View style={styles.miniHeaderAccent} fixed render={({ pageNumber }) => pageNumber === 1 ? null : <View />} />
 
                 {/* Body */}
                 <View style={styles.body}>
