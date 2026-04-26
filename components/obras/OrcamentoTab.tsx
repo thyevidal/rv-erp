@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import * as XLSX from 'xlsx'
+import OrcamentoPDFButton from '@/components/obras/OrcamentoPDFButton'
 
 interface Props {
   obraId: string
@@ -257,6 +258,7 @@ export default function OrcamentoTab({ obraId, itens, bdi }: Props) {
             <FileSpreadsheet className="w-3.5 h-3.5" /> Importar XLSX
           </Button>
           <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleXlsxImport} />
+          <OrcamentoPDFButton obraId={obraId} />
         </div>
         <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setBdiOpen(true)}>
           <Settings2 className="w-3.5 h-3.5" />
