@@ -9,6 +9,7 @@ import CronogramaTab from '@/components/obras/CronogramaTab'
 import CurvaABCTab from '@/components/obras/CurvaABCTab'
 import MapaColetaTab from '@/components/obras/MapaColetaTab'
 import EstoqueTab from '@/components/obras/EstoqueTab'
+import FinanceiroTab from '@/components/obras/FinanceiroTab'
 import ObraHeaderActions from '@/components/obras/ObraHeaderActions'
 
 const STATUS_MAP: Record<string, { label: string; classes: string }> = {
@@ -23,7 +24,11 @@ export default async function ObraDetailPage({ params }: { params: { id: string 
   const supabase = await createClient()
   const { id } = await params
 
-  const [{ data: obra }, { data: bdi }, { data: itens }, { data: cronos }, { data: coleta }, { data: estoque }] =
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: profile } = await supabase
+    .from('profiles').select('organization_id').eq('id', user!.id).single()
+
+  const [{ data: obra }, { data: bdi }, { data: itens }, { data: cronos }, { data: coleta }, { data: estoque }, { data: lancamentos }] =
     await Promise.all([
       supabase.from('obras').select('*').eq('id', id).single(),
       supabase.from('bdi_config').select('*').eq('obra_id', id).maybeSingle(),
@@ -31,6 +36,7 @@ export default async function ObraDetailPage({ params }: { params: { id: string 
       supabase.from('cronograma').select('*').eq('obra_id', id).order('data_prevista_inicio'),
       supabase.from('mapa_coleta').select('*').eq('obra_id', id),
       supabase.from('estoque_logs').select('*').eq('obra_id', id).order('data_entrega', { ascending: false }),
+      supabase.from('financeiro_lancamentos').select('*').eq('obra_id', id).order('data', { ascending: false }),
     ])
 
   if (!obra) notFound()
@@ -42,12 +48,10 @@ export default async function ObraDetailPage({ params }: { params: { id: string 
 
   return (
     <div className="space-y-6">
-      {/* Breadcrumb */}
       <Link href="/dashboard/obras" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="w-4 h-4" /> Obras
       </Link>
 
-      {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
@@ -69,11 +73,9 @@ export default async function ObraDetailPage({ params }: { params: { id: string 
             <span className="font-semibold text-foreground">Total: {formatCurrency(totalVenda)}</span>
           </div>
         </div>
-
         <ObraHeaderActions obra={obra} />
       </div>
 
-      {/* Tabs */}
       <Tabs defaultValue="orcamento" className="w-full">
         <TabsList className="mb-6">
           <TabsTrigger value="orcamento">Orçamento</TabsTrigger>
@@ -81,26 +83,32 @@ export default async function ObraDetailPage({ params }: { params: { id: string 
           <TabsTrigger value="curva-abc">Curva ABC</TabsTrigger>
           <TabsTrigger value="mapa-coleta">Mapa de Coleta</TabsTrigger>
           <TabsTrigger value="estoque">Recebimento</TabsTrigger>
+          <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
         </TabsList>
 
         <TabsContent value="orcamento">
           <OrcamentoTab obraId={id} itens={itens ?? []} bdi={bdi} />
         </TabsContent>
-
         <TabsContent value="cronograma">
           <CronogramaTab obraId={id} tarefas={cronos ?? []} />
         </TabsContent>
-
         <TabsContent value="curva-abc">
           <CurvaABCTab itens={itens ?? []} />
         </TabsContent>
-
         <TabsContent value="mapa-coleta">
           <MapaColetaTab obraId={id} itens={itens ?? []} coleta={coleta ?? []} />
         </TabsContent>
-
         <TabsContent value="estoque">
           <EstoqueTab obraId={id} itens={itens ?? []} logs={estoque ?? []} />
+        </TabsContent>
+        <TabsContent value="financeiro">
+          <FinanceiroTab
+            obraId={id}
+            organizationId={profile?.organization_id ?? ''}
+            lancamentos={lancamentos ?? []}
+            totalPlanejado={totalVenda}
+            custoPlanejado={totalCusto}
+          />
         </TabsContent>
       </Tabs>
     </div>
