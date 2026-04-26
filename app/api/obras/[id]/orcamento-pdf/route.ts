@@ -5,7 +5,7 @@ import { OrcamentoPDFDocument } from '@/components/obras/OrcamentoPDFDocument'
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     const supabase = await createClient()
     const { id } = await params
