@@ -114,7 +114,7 @@ export default function InsumosPage() {
             obra_nome: (i.obras as unknown as { nome: string; status: string }).nome,
             descricao: i.descricao,
           })),
-          payload: { ...payload, user_id: undefined },
+          payload: { ...payload },
         })
         setConfirmOpen(true)
         return
@@ -126,12 +126,14 @@ export default function InsumosPage() {
   }
 
   async function salvarInsumo(payload: Record<string, unknown>, id?: string) {
-    const { data: { user } } = await supabase.auth.getUser()
-    const fullPayload = { ...payload, user_id: user!.id }
-
-    const { error } = id
-      ? await supabase.from('insumos_base').update(payload).eq('id', id)
-      : await supabase.from('insumos_base').insert(fullPayload)
+    let error
+    if (id) {
+      ; ({ error } = await supabase.from('insumos_base').update(payload).eq('id', id))
+    } else {
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user!.id).single()
+        ; ({ error } = await supabase.from('insumos_base').insert({ ...payload, user_id: user!.id, organization_id: profile?.organization_id }))
+    }
 
     if (error) { toast.error(error.message); return }
     toast.success(id ? 'Insumo atualizado!' : 'Insumo criado!')
