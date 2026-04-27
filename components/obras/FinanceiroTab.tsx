@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { formatCurrency } from '@/lib/utils'
 import {
     Plus, Trash2, Loader2, TrendingUp, TrendingDown, DollarSign,
-    ArrowUpCircle, ArrowDownCircle, Paperclip
+    ArrowUpCircle, ArrowDownCircle, Paperclip, ChevronDown
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -29,12 +29,23 @@ interface Lancamento {
     observacao: string | null
 }
 
+interface BdiConfig {
+    bdi_total: number
+    impostos: number
+    margem_lucro: number
+    seguros: number
+    custos_indiretos: number
+}
+
 interface Props {
     obraId: string
     organizationId: string
     lancamentos: Lancamento[]
-    totalPlanejado: number   // preço de venda (receita prevista)
-    custoPlanejado: number   // custo direto do orçamento
+    totalPlanejado: number
+    custoPlanejado: number
+    custoMaterial: number
+    custoMaoObra: number
+    bdi: BdiConfig | null
 }
 
 const CATEGORIAS_SAIDA = [
@@ -57,12 +68,13 @@ const EMPTY = {
 }
 
 export default function FinanceiroTab({
-    obraId, organizationId, lancamentos, totalPlanejado, custoPlanejado
+    obraId, organizationId, lancamentos, totalPlanejado, custoPlanejado, custoMaterial, custoMaoObra, bdi
 }: Props) {
     const router = useRouter()
     const supabase = createClient()
     const fileRef = useRef<HTMLInputElement>(null)
     const [open, setOpen] = useState(false)
+    const [composicaoOpen, setComposicaoOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const [uploadingFor, setUploadingFor] = useState<string | null>(null)
     const [form, setForm] = useState({ ...EMPTY })
@@ -79,6 +91,13 @@ export default function FinanceiroTab({
         .reduce((a, l) => a + l.valor, 0)
 
     const saldoAtual = totalEntradas - totalSaidas
+
+    // Composição do orçamento
+    const bdiTotal = bdi?.bdi_total ?? 0
+    const impostosValor = totalPlanejado * ((bdi?.impostos ?? 0) / 100)
+    const margemValor = totalPlanejado * ((bdi?.margem_lucro ?? 0) / 100)
+    const segurosValor = totalPlanejado * ((bdi?.seguros ?? 0) / 100)
+    const ciValor = totalPlanejado * ((bdi?.custos_indiretos ?? 0) / 100)
 
     // % executado do orçamento
     const pctGasto = custoPlanejado > 0 ? (totalSaidas / custoPlanejado) * 100 : 0
@@ -138,6 +157,72 @@ export default function FinanceiroTab({
 
     return (
         <div className="space-y-6">
+
+            {/* Composição do Orçamento — Accordion */}
+            <Card className="border-border/60 overflow-hidden">
+                <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition-colors"
+                    onClick={() => setComposicaoOpen((p) => !p)}
+                >
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Composição do Orçamento
+                    </span>
+                    <div className="flex items-center gap-3">
+                        <span className="text-sm font-bold text-primary">{formatCurrency(totalPlanejado)}</span>
+                        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${composicaoOpen ? 'rotate-180' : ''}`} />
+                    </div>
+                </button>
+
+                {composicaoOpen && (
+                    <div className="border-t">
+                        <table className="w-full text-sm">
+                            <tbody>
+                                <tr className="border-b">
+                                    <td className="px-4 py-2.5 text-muted-foreground">Material (custo direto)</td>
+                                    <td className="px-4 py-2.5 text-right font-medium">{formatCurrency(custoMaterial)}</td>
+                                </tr>
+                                <tr className="border-b">
+                                    <td className="px-4 py-2.5 text-muted-foreground">Mão de Obra (custo direto)</td>
+                                    <td className="px-4 py-2.5 text-right font-medium">{formatCurrency(custoMaoObra)}</td>
+                                </tr>
+                                <tr className="border-b bg-muted/20">
+                                    <td className="px-4 py-2.5 font-semibold">Custo Direto Total</td>
+                                    <td className="px-4 py-2.5 text-right font-bold">{formatCurrency(custoPlanejado)}</td>
+                                </tr>
+                                <tr className="border-b">
+                                    <td className="px-4 py-2.5 text-muted-foreground">
+                                        Custos Indiretos <span className="text-xs text-muted-foreground/60">({bdi?.custos_indiretos ?? 0}%)</span>
+                                    </td>
+                                    <td className="px-4 py-2.5 text-right font-medium">{formatCurrency(ciValor)}</td>
+                                </tr>
+                                <tr className="border-b">
+                                    <td className="px-4 py-2.5 text-muted-foreground">
+                                        Seguros <span className="text-xs text-muted-foreground/60">({bdi?.seguros ?? 0}%)</span>
+                                    </td>
+                                    <td className="px-4 py-2.5 text-right font-medium">{formatCurrency(segurosValor)}</td>
+                                </tr>
+                                <tr className="border-b">
+                                    <td className="px-4 py-2.5 text-muted-foreground">
+                                        Margem de Lucro <span className="text-xs text-muted-foreground/60">({bdi?.margem_lucro ?? 0}%)</span>
+                                    </td>
+                                    <td className="px-4 py-2.5 text-right font-medium">{formatCurrency(margemValor)}</td>
+                                </tr>
+                                <tr className="border-b">
+                                    <td className="px-4 py-2.5 text-muted-foreground">
+                                        Impostos <span className="text-xs text-muted-foreground/60">({bdi?.impostos ?? 0}%)</span>
+                                    </td>
+                                    <td className="px-4 py-2.5 text-right font-medium">{formatCurrency(impostosValor)}</td>
+                                </tr>
+                                <tr className="bg-primary/5">
+                                    <td className="px-4 py-3 font-bold text-primary">Preço de Venda Total</td>
+                                    <td className="px-4 py-3 text-right font-bold text-primary text-base">{formatCurrency(totalPlanejado)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </Card>
 
             {/* Painel comparativo */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

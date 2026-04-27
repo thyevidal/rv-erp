@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import DashboardCharts from '@/components/dashboard/DashboardCharts'
+import ComposicaoModal from '@/components/dashboard/ComposicaoModal'
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   PLANEJAMENTO: { label: 'Planejamento', color: 'bg-blue-500/15 text-blue-400 border-blue-500/30', icon: Clock },
@@ -22,13 +23,21 @@ export default async function DashboardPage() {
   const [{ data: obras }, { data: orcamentoItens }, { data: cronogramas }, { data: bdis }] =
     await Promise.all([
       supabase.from('obras').select('*').is('deleted_at', null).order('created_at', { ascending: false }),
-      supabase.from('orcamento_itens').select('obra_id, quantidade, custo_unitario_aplicado'),
+      supabase.from('orcamento_itens').select('obra_id, quantidade, custo_unitario_aplicado, tipo'),
       supabase.from('cronograma').select('obra_id, status'),
-      supabase.from('bdi_config').select('obra_id, bdi_total'),
+      supabase.from('bdi_config').select('obra_id, bdi_total, impostos, margem_lucro, seguros, custos_indiretos'),
     ])
 
   const obrasList = obras ?? []
-  const bdiMap = new Map((bdis ?? []).map((b) => [b.obra_id, b.bdi_total]))
+  const bdiMap = new Map((bdis ?? []).map((b) => [b.obra_id, b]))
+
+  // Composição geral — soma nominal de cada componente
+  let totalImpostos = 0
+  let totalMargem = 0
+  let totalSeguros = 0
+  let totalCI = 0
+  let totalMaterial = 0
+  let totalMaoObra = 0
 
   // Calcula custo direto e valor de venda por obra
   const custosPorObra = new Map<string, number>()
@@ -42,10 +51,43 @@ export default async function DashboardPage() {
   let totalCustoGeral = 0
   for (const obra of obrasList) {
     const custo = custosPorObra.get(obra.id) ?? 0
-    const bdi = bdiMap.get(obra.id) ?? 0
-    totalVendaGeral += calcBdiPrecoVenda(custo, bdi)
+    const bdiConfig = bdiMap.get(obra.id)
+    const bdiTotal = bdiConfig?.bdi_total ?? 0
+    const venda = calcBdiPrecoVenda(custo, bdiTotal)
+    totalVendaGeral += venda
     totalCustoGeral += custo
+
+    // Composição nominal de cada obra
+    if (bdiConfig) {
+      totalImpostos += venda * (bdiConfig.impostos / 100)
+      totalMargem += venda * (bdiConfig.margem_lucro / 100)
+      totalSeguros += venda * (bdiConfig.seguros / 100)
+      totalCI += venda * (bdiConfig.custos_indiretos / 100)
+    }
   }
+
+  // Custo material e MO por obra
+  const materialPorObra = new Map<string, number>()
+  const maoPorObra = new Map<string, number>()
+  for (const item of orcamentoItens ?? []) {
+    const val = item.quantidade * item.custo_unitario_aplicado
+    if ((item as any).tipo === 'MATERIAL') {
+      materialPorObra.set(item.obra_id, (materialPorObra.get(item.obra_id) ?? 0) + val)
+    } else {
+      maoPorObra.set(item.obra_id, (maoPorObra.get(item.obra_id) ?? 0) + val)
+    }
+  }
+  for (const obra of obrasList) {
+    totalMaterial += materialPorObra.get(obra.id) ?? 0
+    totalMaoObra += maoPorObra.get(obra.id) ?? 0
+  }
+
+  // Médias percentuais dos BDIs
+  const nObrasComBdi = (bdis ?? []).length
+  const mediaImpostos = nObrasComBdi > 0 ? (bdis ?? []).reduce((a, b) => a + b.impostos, 0) / nObrasComBdi : 0
+  const mediaMargem = nObrasComBdi > 0 ? (bdis ?? []).reduce((a, b) => a + b.margem_lucro, 0) / nObrasComBdi : 0
+  const mediaSeguros = nObrasComBdi > 0 ? (bdis ?? []).reduce((a, b) => a + b.seguros, 0) / nObrasComBdi : 0
+  const mediaCI = nObrasComBdi > 0 ? (bdis ?? []).reduce((a, b) => a + b.custos_indiretos, 0) / nObrasComBdi : 0
 
   const roi = totalCustoGeral > 0
     ? ((totalVendaGeral - totalCustoGeral) / totalCustoGeral) * 100
@@ -100,7 +142,8 @@ export default async function DashboardPage() {
 
   const obrasBars = obrasList.slice(0, 6).map((o) => {
     const custo = custosPorObra.get(o.id) ?? 0
-    const bdi = bdiMap.get(o.id) ?? 0
+    const bdiC = bdiMap.get(o.id)
+    const bdi = bdiC?.bdi_total ?? 0
     return {
       name: o.nome.length > 18 ? o.nome.slice(0, 18) + '…' : o.nome,
       custo: calcBdiPrecoVenda(custo, bdi),
@@ -134,7 +177,76 @@ export default async function DashboardPage() {
         })}
       </div>
 
+
+
       <DashboardCharts statusData={statusCount} obrasData={obrasBars} />
+
+      {/* Composição Geral */}
+      {obrasList.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Composição Geral dos Orçamentos</h2>
+            <ComposicaoModal
+              totalMaterial={totalMaterial}
+              totalMaoObra={totalMaoObra}
+              totalCustoGeral={totalCustoGeral}
+              totalCI={totalCI}
+              totalSeguros={totalSeguros}
+              totalMargem={totalMargem}
+              totalImpostos={totalImpostos}
+              totalVendaGeral={totalVendaGeral}
+              mediaCI={mediaCI}
+              mediaSeguros={mediaSeguros}
+              mediaMargem={mediaMargem}
+              mediaImpostos={mediaImpostos}
+            />
+          </div>
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
+            <Card className="border-border/60">
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground mb-1">Material</p>
+                <p className="text-lg font-bold">{formatCurrency(totalMaterial)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Custo direto de materiais</p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/60">
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground mb-1">Mão de Obra</p>
+                <p className="text-lg font-bold">{formatCurrency(totalMaoObra)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Custo direto de MO</p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/60">
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground mb-1">Custos Indiretos</p>
+                <p className="text-lg font-bold">{formatCurrency(totalCI)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Média {mediaCI.toFixed(1)}% por obra</p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/60">
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground mb-1">Seguros</p>
+                <p className="text-lg font-bold">{formatCurrency(totalSeguros)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Média {mediaSeguros.toFixed(1)}% por obra</p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/60">
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground mb-1">Margem de Lucro</p>
+                <p className="text-lg font-bold text-green-500">{formatCurrency(totalMargem)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Média {mediaMargem.toFixed(1)}% por obra</p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/60">
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground mb-1">Impostos</p>
+                <p className="text-lg font-bold text-yellow-500">{formatCurrency(totalImpostos)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Média {mediaImpostos.toFixed(1)}% por obra</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
 
       <div>
         <h2 className="text-lg font-semibold mb-4">Obras Recentes</h2>
@@ -154,7 +266,8 @@ export default async function DashboardPage() {
               const cfg = STATUS_CONFIG[obra.status] ?? STATUS_CONFIG.PLANEJAMENTO
               const StatusIcon = cfg.icon
               const custo = custosPorObra.get(obra.id) ?? 0
-              const bdi = bdiMap.get(obra.id) ?? 0
+              const bdiCfg = bdiMap.get(obra.id)
+              const bdi = bdiCfg?.bdi_total ?? 0
               const venda = calcBdiPrecoVenda(custo, bdi)
               return (
                 <Link key={obra.id} href={`/dashboard/obras/${obra.id}`}>

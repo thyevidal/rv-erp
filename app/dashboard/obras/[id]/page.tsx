@@ -43,6 +43,8 @@ export default async function ObraDetailPage({ params }: { params: { id: string 
 
   const cfg = STATUS_MAP[obra.status] ?? STATUS_MAP.PLANEJAMENTO
   const totalCusto = (itens ?? []).reduce((a, i) => a + i.quantidade * i.custo_unitario_aplicado, 0)
+  const custoMaterial = (itens ?? []).filter((i) => i.tipo === 'MATERIAL').reduce((a, i) => a + i.quantidade * i.custo_unitario_aplicado, 0)
+  const custoMaoObra = (itens ?? []).filter((i) => i.tipo === 'MAO_DE_OBRA').reduce((a, i) => a + i.quantidade * i.custo_unitario_aplicado, 0)
   const bdiTotal = bdi?.bdi_total ?? 0
   const totalVenda = calcBdiPrecoVenda(totalCusto, bdiTotal)
 
@@ -108,6 +110,9 @@ export default async function ObraDetailPage({ params }: { params: { id: string 
             lancamentos={lancamentos ?? []}
             totalPlanejado={totalVenda}
             custoPlanejado={totalCusto}
+            custoMaterial={custoMaterial}
+            custoMaoObra={custoMaoObra}
+            bdi={bdi}
           />
         </TabsContent>
       </Tabs>
