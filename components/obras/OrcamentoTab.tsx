@@ -267,7 +267,7 @@ export default function OrcamentoTab({ obraId, itens, bdi }: Props) {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
           { label: 'Custo Direto', value: formatCurrency(totalCusto), sub: 'Sem BDI' },
           { label: 'BDI', value: `${bdiTotal.toFixed(2)}%`, sub: 'Taxa aplicada' },
@@ -437,7 +437,7 @@ export default function OrcamentoTab({ obraId, itens, bdi }: Props) {
 
       {/* Add/Edit Item Dialog */}
       <Dialog open={addOpen} onOpenChange={(open) => { setAddOpen(open); if (!open) { setInsumoSearch(''); setShowSuggestions(false) } }}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{row.id ? 'Editar Item' : 'Adicionar Item'}</DialogTitle></DialogHeader>
           <form onSubmit={handleAddItem} className="space-y-3 pt-2">
 
@@ -493,7 +493,7 @@ export default function OrcamentoTab({ obraId, itens, bdi }: Props) {
 
             <Separator />
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Etapa *</Label>
                 <Input value={row.etapa} onChange={(e) => setRow_('etapa', e.target.value)} placeholder="Ex.: 1. Fundação" required />
@@ -507,7 +507,7 @@ export default function OrcamentoTab({ obraId, itens, bdi }: Props) {
               <Label>Descrição *</Label>
               <Input value={row.descricao} onChange={(e) => setRow_('descricao', e.target.value)} placeholder="Nome do insumo/serviço" required />
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label>Unidade</Label>
                 <Input value={row.unidade} onChange={(e) => setRow_('unidade', e.target.value)} placeholder="un" />

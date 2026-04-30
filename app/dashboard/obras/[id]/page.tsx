@@ -79,14 +79,16 @@ export default async function ObraDetailPage({ params }: { params: { id: string 
       </div>
 
       <Tabs defaultValue="orcamento" className="w-full">
-        <TabsList className="mb-6">
-          <TabsTrigger value="orcamento">Orçamento</TabsTrigger>
-          <TabsTrigger value="cronograma">Cronograma</TabsTrigger>
-          <TabsTrigger value="curva-abc">Curva ABC</TabsTrigger>
-          <TabsTrigger value="mapa-coleta">Mapa de Coleta</TabsTrigger>
-          <TabsTrigger value="estoque">Recebimento</TabsTrigger>
-          <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto mb-6">
+          <TabsList className="w-max">
+            <TabsTrigger value="orcamento">Orçamento</TabsTrigger>
+            <TabsTrigger value="cronograma">Cronograma</TabsTrigger>
+            <TabsTrigger value="curva-abc">Curva ABC</TabsTrigger>
+            <TabsTrigger value="mapa-coleta">Mapa de Coleta</TabsTrigger>
+            <TabsTrigger value="estoque">Recebimento</TabsTrigger>
+            <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="orcamento">
           <OrcamentoTab obraId={id} itens={itens ?? []} bdi={bdi} />

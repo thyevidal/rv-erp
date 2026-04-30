@@ -53,7 +53,7 @@ export default function ConfiguracoesPage() {
   }
 
   return (
-    <div className="space-y-8 max-w-2xl">
+    <div className="space-y-8 w-full max-w-2xl">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">

@@ -30,7 +30,7 @@ export default function ObraCard({ obra, custo }: Props) {
         <Card className="h-full border-border/60 hover:border-primary/50 hover:shadow-md transition-all cursor-pointer">
           <CardContent className="p-5 flex flex-col gap-4">
             <div className="flex items-start justify-between gap-2">
-              <h2 className="font-semibold text-base leading-snug line-clamp-2 pr-6">{obra.nome}</h2>
+              <h2 className="font-semibold text-base leading-snug line-clamp-2 pr-2">{obra.nome}</h2>
               <span className={`shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full border ${cfg.classes}`}>
                 {cfg.label}
               </span>

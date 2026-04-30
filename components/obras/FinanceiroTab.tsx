@@ -175,8 +175,8 @@ export default function FinanceiroTab({
                 </button>
 
                 {composicaoOpen && (
-                    <div className="border-t">
-                        <table className="w-full text-sm">
+                    <div className="border-t overflow-x-auto">
+                        <table className="w-full min-w-[320px] text-sm">
                             <tbody>
                                 <tr className="border-b">
                                     <td className="px-4 py-2.5 text-muted-foreground">Material (custo direto)</td>

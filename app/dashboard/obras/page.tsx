@@ -41,7 +41,7 @@ export default async function ObrasPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {obrasList.map((obra) => {
             const custo = (itens ?? [])
               .filter((i) => i.obra_id === obra.id)

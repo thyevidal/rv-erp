@@ -24,7 +24,7 @@ export default function MobileHeader() {
             <Menu className="w-6 h-6" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="p-0 w-64 border-none">
+        <SheetContent side="left" className="p-0 w-[80vw] max-w-[280px] border-none">
           <Sidebar className="w-full" />
         </SheetContent>
       </Sheet>
