@@ -3,9 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency, calcBdiPrecoVenda } from '@/lib/utils'
 import {
   HardHat, TrendingUp, DollarSign, Activity, AlertTriangle,
-  CheckCircle2, Clock, PauseCircle
+  CheckCircle2, Clock, PauseCircle, Trophy, Target, Layers,
+  ClipboardX, Calculator,
 } from 'lucide-react'
-import Link from 'next/link'
 import DashboardCharts from '@/components/dashboard/DashboardCharts'
 import ComposicaoModal from '@/components/dashboard/ComposicaoModal'
 
@@ -135,6 +135,46 @@ export default async function DashboardPage() {
     },
   ]
 
+  // Insight 1: obra mais lucrativa
+  let obraMaisLucrativa: { nome: string; margem: number } | null = null
+  for (const obra of obrasList) {
+    const custo = custosPorObra.get(obra.id) ?? 0
+    const bdiCfg = bdiMap.get(obra.id)
+    const bdi = bdiCfg?.bdi_total ?? 0
+    const venda = calcBdiPrecoVenda(custo, bdi)
+    const margem = venda - custo
+    if (!obraMaisLucrativa || margem > obraMaisLucrativa.margem) {
+      obraMaisLucrativa = { nome: obra.nome, margem }
+    }
+  }
+
+  // Insight 2: obras sem orçamento
+  const obrasSemOrcamento = obrasList.filter((o) => !(custosPorObra.get(o.id) ?? 0)).length
+
+  // Insight 3: concentração de portfólio
+  let maiorVendaObra = 0
+  for (const obra of obrasList) {
+    const custo = custosPorObra.get(obra.id) ?? 0
+    const bdiCfg = bdiMap.get(obra.id)
+    const bdi = bdiCfg?.bdi_total ?? 0
+    const venda = calcBdiPrecoVenda(custo, bdi)
+    if (venda > maiorVendaObra) maiorVendaObra = venda
+  }
+  const concentracaoPortfolio = totalVendaGeral > 0 ? (maiorVendaObra / totalVendaGeral) * 100 : 0
+
+  // Insight 4: % material vs % mão de obra sobre custo direto
+  const percMaterial = totalCustoGeral > 0 ? (totalMaterial / totalCustoGeral) * 100 : 0
+  const percMaoObra = totalCustoGeral > 0 ? (totalMaoObra / totalCustoGeral) * 100 : 0
+
+  // Insight 5: obras EM_ANDAMENTO sem tarefas no cronograma
+  const obrasComTarefas = new Set((cronogramas ?? []).map((c) => c.obra_id))
+  const obrasAndamentoSemTarefas = obrasList.filter(
+    (o) => o.status === 'EM_ANDAMENTO' && !obrasComTarefas.has(o.id),
+  ).length
+
+  // Insight 6: custo direto médio por obra
+  const custoMedioPorObra = totalObras > 0 ? totalCustoGeral / totalObras : 0
+
   const statusCount = Object.entries(STATUS_CONFIG).map(([status, cfg]) => ({
     name: cfg.label,
     value: obrasList.filter((o) => o.status === status).length,
@@ -248,54 +288,124 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Obras Recentes</h2>
-        {obrasList.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <HardHat className="w-10 h-10 text-muted-foreground/40 mb-3" />
-              <p className="font-medium text-muted-foreground">Nenhuma obra cadastrada</p>
-              <p className="text-sm text-muted-foreground/60 mt-1">
-                Crie sua primeira obra no menu <strong>Obras</strong>.
+      <div className="space-y-3">
+        <h2 className="text-lg font-semibold">Insights</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+
+          {/* Obra Mais Lucrativa */}
+          <Card className="border-border/60">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-1.5 rounded-md bg-yellow-500/10">
+                  <Trophy className="w-4 h-4 text-yellow-500" />
+                </div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Obra Mais Lucrativa</p>
+              </div>
+              {obraMaisLucrativa ? (
+                <>
+                  <p className="text-base font-semibold leading-snug line-clamp-1">{obraMaisLucrativa.nome}</p>
+                  <p className="text-sm font-bold text-green-500 mt-1">{formatCurrency(obraMaisLucrativa.margem)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Margem bruta estimada</p>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">Sem dados suficientes</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Obras Sem Orçamento */}
+          <Card className={`border-border/60 ${obrasSemOrcamento > 0 ? 'border-yellow-500/40' : ''}`}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className={`p-1.5 rounded-md ${obrasSemOrcamento > 0 ? 'bg-yellow-500/10' : 'bg-green-500/10'}`}>
+                  <AlertTriangle className={`w-4 h-4 ${obrasSemOrcamento > 0 ? 'text-yellow-500' : 'text-green-500'}`} />
+                </div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Obras Sem Orçamento</p>
+              </div>
+              <p className={`text-2xl font-bold ${obrasSemOrcamento > 0 ? 'text-yellow-500' : 'text-green-500'}`}>
+                {obrasSemOrcamento}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {obrasSemOrcamento > 0 ? 'Obras sem itens de orçamento' : 'Todas as obras têm orçamento'}
               </p>
             </CardContent>
           </Card>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {obrasList.slice(0, 6).map((obra) => {
-              const cfg = STATUS_CONFIG[obra.status] ?? STATUS_CONFIG.PLANEJAMENTO
-              const StatusIcon = cfg.icon
-              const custo = custosPorObra.get(obra.id) ?? 0
-              const bdiCfg = bdiMap.get(obra.id)
-              const bdi = bdiCfg?.bdi_total ?? 0
-              const venda = calcBdiPrecoVenda(custo, bdi)
-              return (
-                <Link key={obra.id} href={`/dashboard/obras/${obra.id}`}>
-                  <Card className="border-border/60 hover:border-primary/40 hover:shadow-md transition-all cursor-pointer h-full">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <CardTitle className="text-base font-semibold leading-snug">{obra.nome}</CardTitle>
-                        <span className={`shrink-0 inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border ${cfg.color}`}>
-                          <StatusIcon className="w-3 h-3" />
-                          {cfg.label}
-                        </span>
-                      </div>
-                      {obra.endereco && (
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{obra.endereco}</p>
-                      )}
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="flex justify-between items-center text-sm border-t pt-3">
-                        <span className="text-muted-foreground">Preço de Venda</span>
-                        <span className="font-semibold text-foreground">{formatCurrency(venda)}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              )
-            })}
-          </div>
-        )}
+
+          {/* Concentração de Portfólio */}
+          <Card className={`border-border/60 ${concentracaoPortfolio > 50 ? 'border-orange-500/40' : ''}`}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className={`p-1.5 rounded-md ${concentracaoPortfolio > 50 ? 'bg-orange-500/10' : 'bg-blue-500/10'}`}>
+                  <Target className={`w-4 h-4 ${concentracaoPortfolio > 50 ? 'text-orange-500' : 'text-blue-400'}`} />
+                </div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Concentração de Portfólio</p>
+              </div>
+              <p className={`text-2xl font-bold ${concentracaoPortfolio > 50 ? 'text-orange-500' : 'text-blue-400'}`}>
+                {concentracaoPortfolio.toFixed(1)}%
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {concentracaoPortfolio > 50 ? 'Alta dependência de 1 obra' : 'Portfólio bem distribuído'}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Relação Material vs MO */}
+          <Card className="border-border/60">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-1.5 rounded-md bg-purple-500/10">
+                  <Layers className="w-4 h-4 text-purple-400" />
+                </div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Material vs Mão de Obra</p>
+              </div>
+              <div className="flex items-end gap-3 mt-1">
+                <div>
+                  <p className="text-lg font-bold">{percMaterial.toFixed(1)}%</p>
+                  <p className="text-xs text-muted-foreground">Material</p>
+                </div>
+                <div className="text-muted-foreground/40 text-sm mb-1">vs</div>
+                <div>
+                  <p className="text-lg font-bold">{percMaoObra.toFixed(1)}%</p>
+                  <p className="text-xs text-muted-foreground">Mão de Obra</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Proporção sobre o custo direto total</p>
+            </CardContent>
+          </Card>
+
+          {/* Obras em Andamento Sem Cronograma */}
+          <Card className={`border-border/60 ${obrasAndamentoSemTarefas > 0 ? 'border-red-500/40' : ''}`}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className={`p-1.5 rounded-md ${obrasAndamentoSemTarefas > 0 ? 'bg-red-500/10' : 'bg-green-500/10'}`}>
+                  <ClipboardX className={`w-4 h-4 ${obrasAndamentoSemTarefas > 0 ? 'text-red-400' : 'text-green-500'}`} />
+                </div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Em Andamento Sem Cronograma</p>
+              </div>
+              <p className={`text-2xl font-bold ${obrasAndamentoSemTarefas > 0 ? 'text-red-400' : 'text-green-500'}`}>
+                {obrasAndamentoSemTarefas}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {obrasAndamentoSemTarefas > 0 ? 'Obras ativas sem tarefas definidas' : 'Todas com cronograma configurado'}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Custo Médio por Obra */}
+          <Card className="border-border/60">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-1.5 rounded-md bg-cyan-500/10">
+                  <Calculator className="w-4 h-4 text-cyan-400" />
+                </div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Custo Médio por Obra</p>
+              </div>
+              <p className="text-xl font-bold text-cyan-400">{formatCurrency(custoMedioPorObra)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Custo direto médio acumulado</p>
+            </CardContent>
+          </Card>
+
+        </div>
       </div>
     </div>
   )
