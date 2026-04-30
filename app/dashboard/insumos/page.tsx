@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -255,8 +255,8 @@ export default function InsumosPage() {
                   const isExp = expanded.has(insumo.id)
                   const forns = fornecedoresMap[insumo.id] ?? []
                   return (
-                    <>
-                      <tr key={insumo.id} className="border-b hover:bg-muted/20 transition-colors">
+                    <Fragment key={insumo.id}>
+                      <tr className="border-b hover:bg-muted/20 transition-colors">
                         <td className="px-4 py-3">
                           <button onClick={() => toggleExpand(insumo.id)} className="text-muted-foreground hover:text-foreground">
                             {isExp ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
@@ -354,7 +354,7 @@ export default function InsumosPage() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   )
                 })}
               </tbody>

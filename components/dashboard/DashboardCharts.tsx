@@ -7,7 +7,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency } from '@/lib/utils'
 
-const COLORS = ['#f97316', '#3b82f6', '#22c55e', '#a855f7', '#ef4444']
+const COLORS = ['#3C3489', '#7F77DD', '#22c55e', '#38bdf8', '#CECBF6']
 
 type StatusData = { name: string; value: number }
 type ObraBar = { name: string; custo: number }
@@ -69,7 +69,7 @@ export default function DashboardCharts({ statusData, obrasData }: Props) {
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip formatter={(v) => formatCurrency(Number(v))} />
-                <Bar dataKey="custo" fill="oklch(0.65 0.19 42)" radius={[4, 4, 0, 0]} name="Custo" />
+                <Bar dataKey="custo" fill="#3C3489" radius={[4, 4, 0, 0]} name="Custo" />
               </BarChart>
             </ResponsiveContainer>
           )}
