@@ -135,6 +135,14 @@ export default async function DashboardPage() {
     },
   ]
 
+  // Percentuais ponderados pelo valor de venda (mais precisos que a média simples)
+  const pctMaterial = totalCustoGeral > 0 ? (totalMaterial / totalCustoGeral) * 100 : 0
+  const pctMaoObra = totalCustoGeral > 0 ? (totalMaoObra / totalCustoGeral) * 100 : 0
+  const pctCI = totalVendaGeral > 0 ? (totalCI / totalVendaGeral) * 100 : 0
+  const pctSeguros = totalVendaGeral > 0 ? (totalSeguros / totalVendaGeral) * 100 : 0
+  const pctMargem = totalVendaGeral > 0 ? (totalMargem / totalVendaGeral) * 100 : 0
+  const pctImpostos = totalVendaGeral > 0 ? (totalImpostos / totalVendaGeral) * 100 : 0
+
   // Insight 1: obra mais lucrativa
   let obraMaisLucrativa: { nome: string; margem: number } | null = null
   for (const obra of obrasList) {
@@ -246,42 +254,42 @@ export default async function DashboardPage() {
               <CardContent className="p-4">
                 <p className="text-xs text-muted-foreground mb-1">Material</p>
                 <p className="text-lg font-bold">{formatCurrency(totalMaterial)}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Custo direto de materiais</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{pctMaterial.toFixed(1)}% do custo direto</p>
               </CardContent>
             </Card>
             <Card className="border-border/60">
               <CardContent className="p-4">
                 <p className="text-xs text-muted-foreground mb-1">Mão de Obra</p>
                 <p className="text-lg font-bold">{formatCurrency(totalMaoObra)}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Custo direto de MO</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{pctMaoObra.toFixed(1)}% do custo direto</p>
               </CardContent>
             </Card>
             <Card className="border-border/60">
               <CardContent className="p-4">
                 <p className="text-xs text-muted-foreground mb-1">Custos Indiretos</p>
                 <p className="text-lg font-bold">{formatCurrency(totalCI)}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Média {mediaCI.toFixed(1)}% por obra</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{pctCI.toFixed(1)}% do preço de venda</p>
               </CardContent>
             </Card>
             <Card className="border-border/60">
               <CardContent className="p-4">
                 <p className="text-xs text-muted-foreground mb-1">Seguros</p>
                 <p className="text-lg font-bold">{formatCurrency(totalSeguros)}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Média {mediaSeguros.toFixed(1)}% por obra</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{pctSeguros.toFixed(1)}% do preço de venda</p>
               </CardContent>
             </Card>
             <Card className="border-border/60">
               <CardContent className="p-4">
                 <p className="text-xs text-muted-foreground mb-1">Margem de Lucro</p>
                 <p className="text-lg font-bold text-green-500">{formatCurrency(totalMargem)}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Média {mediaMargem.toFixed(1)}% por obra</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{pctMargem.toFixed(1)}% do preço de venda</p>
               </CardContent>
             </Card>
             <Card className="border-border/60">
               <CardContent className="p-4">
                 <p className="text-xs text-muted-foreground mb-1">Impostos</p>
                 <p className="text-lg font-bold text-yellow-500">{formatCurrency(totalImpostos)}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Média {mediaImpostos.toFixed(1)}% por obra</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{pctImpostos.toFixed(1)}% do preço de venda</p>
               </CardContent>
             </Card>
           </div>
