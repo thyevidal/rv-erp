@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+import { sendEmail, templateBoasVindas } from '@/lib/email'
 
 export async function createMemberAction(formData: FormData) {
   const name = formData.get('name') as string
@@ -62,6 +63,13 @@ export async function createMemberAction(formData: FormData) {
     // Se falhar o perfil, tentar deletar a conta recém criada para não deixar dados órfãos
     await adminClient.auth.admin.deleteUser(authData.user.id)
     return { error: 'Erro ao criar perfil de permissões: ' + profileError.message }
+  }
+
+  // Enviar e-mail de boas-vindas (falha silenciosa — não bloqueia o retorno)
+  try {
+    await sendEmail(email, 'Bem-vindo ao Prumo ERP', templateBoasVindas(name))
+  } catch {
+    console.error('[createMember] Falha ao enviar e-mail de boas-vindas.')
   }
 
   return { success: true }

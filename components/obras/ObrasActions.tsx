@@ -76,6 +76,36 @@ export default function ObrasActions({ primary }: Props) {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user!.id).single()
 
+    // ── Verificar limite do plano ──────────────────────────────────────────
+    const orgId = profile?.organization_id
+    if (orgId) {
+      const { data: sub } = await supabase
+        .from('subscriptions')
+        .select('plan_id, plans(max_obras)')
+        .eq('organization_id', orgId)
+        .eq('status', 'ATIVA')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      const maxObras: number = (sub as any)?.plans?.max_obras ?? 1
+
+      if (maxObras !== -1) {
+        const { count } = await supabase
+          .from('obras')
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', orgId)
+          .is('deleted_at', null)
+
+        if ((count ?? 0) >= maxObras) {
+          toast.error(`Você atingiu o limite de ${maxObras} obra${maxObras > 1 ? 's' : ''} do seu plano. Faça upgrade para continuar.`)
+          setLoading(false)
+          return
+        }
+      }
+    }
+    // ──────────────────────────────────────────────────────────────────────
+
     const { data: obra, error } = await supabase.from('obras').insert({
       nome: form.nome,
       endereco: form.endereco || null,
@@ -113,7 +143,24 @@ export default function ObrasActions({ primary }: Props) {
         const acessos = []
         if (form.cliente_nome) acessos.push({ obra_id: obra.id, tipo: 'CLIENTE', nome: form.cliente_nome, email: null })
         if (form.correspondente_nome) acessos.push({ obra_id: obra.id, tipo: 'CORRESPONDENTE', nome: form.correspondente_nome, email: form.correspondente_email || null })
-        await supabase.from('ac_acessos').insert(acessos)
+        const { data: acessosCriados } = await supabase.from('ac_acessos').insert(acessos).select()
+
+        // Enviar e-mail de convite para o correspondente (se tiver e-mail)
+        if (acessosCriados && form.correspondente_email) {
+          const correspondAcesso = acessosCriados.find((a: { tipo: string }) => a.tipo === 'CORRESPONDENTE')
+          if (correspondAcesso) {
+            fetch('/api/email/convite-portal', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: form.correspondente_email,
+                nomeObra: obra.nome,
+                token: correspondAcesso.token,
+                tipo: 'CORRESPONDENTE',
+              }),
+            }).catch(() => { /* falha silenciosa */ })
+          }
+        }
       }
     }
 
