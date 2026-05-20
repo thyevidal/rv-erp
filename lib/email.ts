@@ -1,6 +1,10 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Inicialização lazy — não instancia no nível do módulo para não quebrar o build
+// quando RESEND_API_KEY não está definida (ex.: build do Vercel sem a variável).
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY!)
+}
 
 const FROM = process.env.EMAIL_FROM ?? 'Prumo ERP <onboarding@resend.dev>'
 
@@ -16,7 +20,7 @@ export async function sendEmail(to: string, subject: string, html: string) {
     return
   }
 
-  const { error } = await resend.emails.send({ from: FROM, to, subject, html })
+  const { error } = await getResend().emails.send({ from: FROM, to, subject, html })
 
   if (error) {
     console.error('[email] Erro ao enviar:', error)
