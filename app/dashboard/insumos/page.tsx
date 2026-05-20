@@ -1,17 +1,17 @@
 'use client'
 
-import { useState, useEffect, Fragment } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Separator } from '@/components/ui/separator'
 import { formatCurrency } from '@/lib/utils'
 import type { InsumoBase } from '@/types'
-import { Plus, Search, Pencil, Trash2, Loader2, Package, ChevronDown, ChevronRight, X } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, Loader2, Package, ChevronDown, ChevronRight, X, Upload, Download } from 'lucide-react'
 import { toast } from 'sonner'
+import * as XLSX from 'xlsx'
 
 interface Fornecedor {
   id: string
@@ -32,14 +32,15 @@ export default function InsumosPage() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [importing, setImporting] = useState(false)
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<InsumoBase | null>(null)
   const [form, setForm] = useState({ ...EMPTY })
   const [fornForm, setFornForm] = useState({ ...EMPTY_FORN })
   const [addingForn, setAddingForn] = useState(false)
   const [savingForn, setSavingForn] = useState(false)
+  const importRef = useRef<HTMLInputElement>(null)
 
-  // Dialog de confirmação de atualização de orçamentos
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmData, setConfirmData] = useState<{
     insumoId: string
@@ -95,7 +96,6 @@ export default function InsumosPage() {
       categoria: form.categoria || null,
     }
 
-    // Se está editando e o preço mudou, verificar orçamentos em planejamento
     if (editing && novoPreco !== editing.custo_unitario) {
       const { data: itensVinculados } = await supabase
         .from('orcamento_itens')
@@ -114,7 +114,7 @@ export default function InsumosPage() {
             obra_nome: (i.obras as unknown as { nome: string; status: string }).nome,
             descricao: i.descricao,
           })),
-          payload: { ...payload },
+          payload,
         })
         setConfirmOpen(true)
         return
@@ -134,7 +134,6 @@ export default function InsumosPage() {
       const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user!.id).single()
         ; ({ error } = await supabase.from('insumos_base').insert({ ...payload, user_id: user!.id, organization_id: profile?.organization_id }))
     }
-
     if (error) { toast.error(error.message); return }
     toast.success(id ? 'Insumo atualizado!' : 'Insumo criado!')
     setOpen(false)
@@ -144,9 +143,7 @@ export default function InsumosPage() {
   async function handleConfirmUpdate(atualizarOrcamentos: boolean) {
     if (!confirmData) return
     setSaving(true)
-
     await salvarInsumo(confirmData.payload, confirmData.insumoId)
-
     if (atualizarOrcamentos) {
       const ids = confirmData.itens.map((i) => i.id)
       const { error } = await supabase
@@ -156,7 +153,6 @@ export default function InsumosPage() {
       if (error) toast.error('Erro ao atualizar orçamentos: ' + error.message)
       else toast.success(`${ids.length} ${ids.length === 1 ? 'item atualizado' : 'itens atualizados'} nos orçamentos!`)
     }
-
     setSaving(false)
     setConfirmOpen(false)
     setConfirmData(null)
@@ -202,6 +198,75 @@ export default function InsumosPage() {
     })
   }
 
+  function handleExport() {
+    const rows = [
+      ['Descrição', 'Unidade', 'Custo Unitário (R$)', 'Categoria'],
+      ...insumos.map(i => [i.descricao, i.unidade, i.custo_unitario, i.categoria ?? ''])
+    ]
+    const wb = XLSX.utils.book_new()
+    const ws = XLSX.utils.aoa_to_sheet(rows)
+    ws['!cols'] = [{ wch: 45 }, { wch: 12 }, { wch: 22 }, { wch: 20 }]
+    XLSX.utils.book_append_sheet(wb, ws, 'Insumos')
+    XLSX.writeFile(wb, 'banco_de_insumos.xlsx')
+    toast.success('Exportado com sucesso!')
+  }
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImporting(true)
+
+    const buffer = await file.arrayBuffer()
+    const wb = XLSX.read(buffer)
+    const ws = wb.Sheets[wb.SheetNames[0]]
+    const rows: Record<string, string | number>[] = XLSX.utils.sheet_to_json(ws)
+
+    if (rows.length === 0) { toast.error('Nenhuma linha encontrada'); setImporting(false); return }
+
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user!.id).single()
+
+    const colMap: Record<string, string> = {
+      'Descrição *': 'descricao', 'Descrição': 'descricao', 'descricao': 'descricao', 'Item': 'descricao',
+      'Unidade *': 'unidade', 'Unidade': 'unidade', 'unidade': 'unidade',
+      'Custo Unitário (R$) *': 'custo', 'Custo Unitário (R$)': 'custo',
+      'Preço Unit. (R$)': 'custo', 'custo_unitario': 'custo',
+      'Categoria': 'categoria', 'categoria': 'categoria',
+    }
+
+    const inserts = rows
+      .map(row => {
+        const mapped: Record<string, string | number> = {}
+        for (const [k, v] of Object.entries(row)) {
+          const key = colMap[k.trim()]
+          if (key) mapped[key] = v
+        }
+        return mapped
+      })
+      .filter(r => r.descricao)
+      .map(r => ({
+        descricao: String(r.descricao),
+        unidade: String(r.unidade ?? 'un'),
+        custo_unitario: parseFloat(String(r.custo ?? 0).replace(',', '.')) || 0,
+        categoria: r.categoria ? String(r.categoria) : null,
+        user_id: user!.id,
+        organization_id: profile?.organization_id,
+      }))
+
+    if (inserts.length === 0) {
+      toast.error('Nenhuma linha válida. Verifique se o cabeçalho está correto.')
+      setImporting(false)
+      return
+    }
+
+    const { error } = await supabase.from('insumos_base').insert(inserts)
+    setImporting(false)
+    if (error) { toast.error(error.message); return }
+    toast.success(`${inserts.length} insumos importados!`)
+    load()
+    if (importRef.current) importRef.current.value = ''
+  }
+
   const filtered = insumos.filter((i) =>
     i.descricao.toLowerCase().includes(search.toLowerCase()) ||
     (i.categoria ?? '').toLowerCase().includes(search.toLowerCase())
@@ -216,9 +281,19 @@ export default function InsumosPage() {
           <h1 className="text-2xl font-bold">Banco de Insumos</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Catálogo mestre de materiais e referências de preços.</p>
         </div>
-        <Button className="gap-1.5" onClick={openAdd}>
-          <Plus className="w-4 h-4" /> Novo Insumo
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={handleExport} disabled={insumos.length === 0}>
+            <Download className="w-3.5 h-3.5" /> Exportar
+          </Button>
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => importRef.current?.click()} disabled={importing}>
+            {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+            {importing ? 'Importando...' : 'Importar XLSX'}
+          </Button>
+          <input ref={importRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
+          <Button className="gap-1.5" onClick={openAdd}>
+            <Plus className="w-4 h-4" /> Novo Insumo
+          </Button>
+        </div>
       </div>
 
       <div className="relative max-w-sm">
@@ -255,8 +330,8 @@ export default function InsumosPage() {
                   const isExp = expanded.has(insumo.id)
                   const forns = fornecedoresMap[insumo.id] ?? []
                   return (
-                    <Fragment key={insumo.id}>
-                      <tr className="border-b hover:bg-muted/20 transition-colors">
+                    <>
+                      <tr key={insumo.id} className="border-b hover:bg-muted/20 transition-colors">
                         <td className="px-4 py-3">
                           <button onClick={() => toggleExpand(insumo.id)} className="text-muted-foreground hover:text-foreground">
                             {isExp ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
@@ -281,7 +356,6 @@ export default function InsumosPage() {
                         </td>
                       </tr>
 
-                      {/* Seção expandida de fornecedores */}
                       {isExp && (
                         <tr key={`${insumo.id}-forn`} className="bg-muted/10 border-b">
                           <td colSpan={7} className="px-8 py-4">
@@ -292,11 +366,9 @@ export default function InsumosPage() {
                                   <Plus className="w-3 h-3" /> Adicionar
                                 </Button>
                               </div>
-
                               {forns.length === 0 && !addingForn && (
                                 <p className="text-xs text-muted-foreground">Nenhum fornecedor cadastrado para este insumo.</p>
                               )}
-
                               {forns.length > 0 && (
                                 <div className="rounded-md border border-border/60 overflow-hidden">
                                   <table className="w-full text-xs">
@@ -325,7 +397,6 @@ export default function InsumosPage() {
                                   </table>
                                 </div>
                               )}
-
                               {addingForn && (
                                 <div className="border border-border/60 rounded-md p-3 space-y-2 bg-background">
                                   <div className="grid grid-cols-3 gap-2">
@@ -354,7 +425,7 @@ export default function InsumosPage() {
                           </td>
                         </tr>
                       )}
-                    </Fragment>
+                    </>
                   )
                 })}
               </tbody>
@@ -363,7 +434,6 @@ export default function InsumosPage() {
         </Card>
       )}
 
-      {/* Dialog add/edit insumo */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>{editing ? 'Editar Insumo' : 'Novo Insumo'}</DialogTitle></DialogHeader>
@@ -397,7 +467,6 @@ export default function InsumosPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog confirmação atualização orçamentos */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>Atualizar orçamentos?</DialogTitle></DialogHeader>

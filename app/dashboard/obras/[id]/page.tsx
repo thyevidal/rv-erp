@@ -10,6 +10,7 @@ import CurvaABCTab from '@/components/obras/CurvaABCTab'
 import MapaColetaTab from '@/components/obras/MapaColetaTab'
 import EstoqueTab from '@/components/obras/EstoqueTab'
 import FinanceiroTab from '@/components/obras/FinanceiroTab'
+import ProcessoCaixaTab from '@/components/obras/ProcessoCaixaTab'
 import ObraHeaderActions from '@/components/obras/ObraHeaderActions'
 
 const STATUS_MAP: Record<string, { label: string; classes: string }> = {
@@ -28,7 +29,7 @@ export default async function ObraDetailPage({ params }: { params: { id: string 
   const { data: profile } = await supabase
     .from('profiles').select('organization_id').eq('id', user!.id).single()
 
-  const [{ data: obra }, { data: bdi }, { data: itens }, { data: cronos }, { data: coleta }, { data: estoque }, { data: lancamentos }] =
+  const [{ data: obra }, { data: bdi }, { data: itens }, { data: cronos }, { data: coleta }, { data: estoque }, { data: lancamentos }, { data: acFases }, { data: acChecklist }, { data: acDocumentos }, { data: acAcessos }] =
     await Promise.all([
       supabase.from('obras').select('*').eq('id', id).single(),
       supabase.from('bdi_config').select('*').eq('obra_id', id).maybeSingle(),
@@ -37,6 +38,10 @@ export default async function ObraDetailPage({ params }: { params: { id: string 
       supabase.from('mapa_coleta').select('*').eq('obra_id', id),
       supabase.from('estoque_logs').select('*').eq('obra_id', id).order('data_entrega', { ascending: false }),
       supabase.from('financeiro_lancamentos').select('*').eq('obra_id', id).order('data', { ascending: false }),
+      supabase.from('ac_fases').select('*').eq('obra_id', id).order('fase_numero'),
+      supabase.from('ac_checklist').select('*').eq('obra_id', id),
+      supabase.from('ac_documentos').select('*').eq('obra_id', id).order('created_at', { ascending: false }),
+      supabase.from('ac_acessos').select('*').eq('obra_id', id),
     ])
 
   if (!obra) notFound()
@@ -79,16 +84,29 @@ export default async function ObraDetailPage({ params }: { params: { id: string 
       </div>
 
       <Tabs defaultValue="orcamento" className="w-full">
-        <div className="overflow-x-auto mb-6">
-          <TabsList className="w-max">
-            <TabsTrigger value="orcamento">Orçamento</TabsTrigger>
-            <TabsTrigger value="cronograma">Cronograma</TabsTrigger>
-            <TabsTrigger value="curva-abc">Curva ABC</TabsTrigger>
-            <TabsTrigger value="mapa-coleta">Mapa de Coleta</TabsTrigger>
-            <TabsTrigger value="estoque">Recebimento</TabsTrigger>
-            <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
-          </TabsList>
-        </div>
+        <TabsList className="mb-6">
+          {obra.tipo === 'AQUISICAO_CONSTRUCAO' && (
+            <TabsTrigger value="processo-caixa">Processo Caixa</TabsTrigger>
+          )}
+          <TabsTrigger value="orcamento">Orçamento</TabsTrigger>
+          <TabsTrigger value="cronograma">Cronograma</TabsTrigger>
+          <TabsTrigger value="curva-abc">Curva ABC</TabsTrigger>
+          <TabsTrigger value="mapa-coleta">Mapa de Coleta</TabsTrigger>
+          <TabsTrigger value="estoque">Recebimento</TabsTrigger>
+          <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
+        </TabsList>
+
+        {obra.tipo === 'AQUISICAO_CONSTRUCAO' && (
+          <TabsContent value="processo-caixa">
+            <ProcessoCaixaTab
+              obraId={id}
+              fases={acFases ?? []}
+              checklist={acChecklist ?? []}
+              documentos={acDocumentos ?? []}
+              acessos={acAcessos ?? []}
+            />
+          </TabsContent>
+        )}
 
         <TabsContent value="orcamento">
           <OrcamentoTab obraId={id} itens={itens ?? []} bdi={bdi} />
