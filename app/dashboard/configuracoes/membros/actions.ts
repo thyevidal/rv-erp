@@ -11,6 +11,7 @@ export async function createMemberAction(formData: FormData) {
   const canViewFinance = formData.get('canViewFinance') === 'true'
   const canDeleteRecords = formData.get('canDeleteRecords') === 'true'
   const canEditInventory = formData.get('canEditInventory') === 'true'
+  const lgpdAceito = formData.get('lgpd_aceito') === 'true'
 
   if (!name || !email || !password || !role) {
     return { error: 'Preencha todos os campos obrigatórios.' }
@@ -53,6 +54,8 @@ export async function createMemberAction(formData: FormData) {
     can_view_finance: canViewFinance,
     can_delete_records: canDeleteRecords,
     can_edit_inventory: canEditInventory,
+    lgpd_aceito: lgpdAceito,
+    lgpd_aceito_em: lgpdAceito ? new Date().toISOString() : null,
   })
 
   if (profileError) {

@@ -10,19 +10,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
 import { Loader2, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
+import Link from 'next/link'
 import { createMemberAction } from '@/app/dashboard/configuracoes/membros/actions'
 
 export default function AddMemberDialog() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [lgpdAceito, setLgpdAceito] = useState(false)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (!lgpdAceito) {
+      toast.error('O colaborador deve aceitar a Política de Privacidade para ser cadastrado.')
+      return
+    }
     setLoading(true)
 
     const formData = new FormData(e.currentTarget)
-    
+    formData.set('lgpd_aceito', 'true')
+
     // Server Action
     const result = await createMemberAction(formData)
 
@@ -109,11 +116,33 @@ export default function AddMemberDialog() {
             </div>
           </div>
 
+          {/* Consentimento LGPD */}
+          <div className="flex items-start gap-3 p-3 rounded-md border border-border/60 bg-muted/20">
+            <input
+              type="checkbox"
+              id="lgpd"
+              checked={lgpdAceito}
+              onChange={(e) => setLgpdAceito(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-border accent-primary cursor-pointer"
+            />
+            <label htmlFor="lgpd" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
+              Confirmo que o colaborador leu e aceitou a{' '}
+              <Link
+                href="/politica-de-privacidade"
+                target="_blank"
+                className="text-primary underline"
+              >
+                Política de Privacidade
+              </Link>{' '}
+              do Prumo ERP, conforme exigido pela LGPD (Lei nº 13.709/2018).
+            </label>
+          </div>
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading} className="gap-2">
+            <Button type="submit" disabled={loading || !lgpdAceito} className="gap-2">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               {loading ? 'Cadastrando...' : 'Cadastrar Membro'}
             </Button>
