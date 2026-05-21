@@ -15,7 +15,7 @@ export default async function FinanceiroOrgPage() {
     .eq('id', user.id)
     .single()
 
-  const orgId = profile?.organization_id
+  const orgId: string = profile?.organization_id ?? ''
 
   // Buscar obras ativas da org
   const { data: obras } = await supabase

@@ -51,7 +51,7 @@ export default function FinanceiroOrgClient({ lancamentos, obras, orgId, userId 
     tipo: 'SAIDA' as 'ENTRADA' | 'SAIDA',
     categoria: 'Outro',
     valor: '',
-    obra_id: '',
+    obra_id: '_none_',
   })
 
   const filtered = useMemo(() => {
@@ -68,7 +68,7 @@ export default function FinanceiroOrgClient({ lancamentos, obras, orgId, userId 
     if (!form.descricao || !form.valor) { toast.error('Preencha todos os campos'); return }
     setSaving(true)
     const { error } = await supabase.from('financeiro_lancamentos').insert({
-      obra_id: form.obra_id || null,
+      obra_id: form.obra_id === '_none_' ? null : form.obra_id,
       data: form.data,
       descricao: form.descricao,
       tipo: form.tipo,
@@ -80,7 +80,7 @@ export default function FinanceiroOrgClient({ lancamentos, obras, orgId, userId 
     if (error) { toast.error(error.message); return }
     toast.success('Lançamento criado!')
     setOpen(false)
-    setForm({ data: new Date().toISOString().split('T')[0], descricao: '', tipo: 'SAIDA', categoria: 'Outro', valor: '', obra_id: '' })
+    setForm({ data: new Date().toISOString().split('T')[0], descricao: '', tipo: 'SAIDA', categoria: 'Outro', valor: '', obra_id: '_none_' })
     router.refresh()
   }
 
@@ -227,7 +227,7 @@ export default function FinanceiroOrgClient({ lancamentos, obras, orgId, userId 
               <Select value={form.obra_id} onValueChange={(v) => setForm((p) => ({ ...p, obra_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Sem obra vinculada" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sem obra</SelectItem>
+                  <SelectItem value="_none_">Sem obra</SelectItem>
                   {obras.map((o) => <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>)}
                 </SelectContent>
               </Select>

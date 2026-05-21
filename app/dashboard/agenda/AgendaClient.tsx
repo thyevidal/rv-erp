@@ -87,8 +87,8 @@ export default function AgendaClient({ eventos, cronogramas, obras, membros, use
     data_inicio: selected,
     data_fim: '',
     tipo: 'EVENTO' as Evento['tipo'],
-    obra_id: '',
-    responsavel_id: '',
+    obra_id: '_none_',
+    responsavel_id: '_none_',
   })
 
   const obraMap = useMemo(() => new Map(obras.map((o) => [o.id, o.nome])), [obras])
@@ -161,7 +161,7 @@ export default function AgendaClient({ eventos, cronogramas, obras, membros, use
   function nextMonth() { setViewDate(new Date(year, month + 1, 1)) }
 
   function openCreate() {
-    setForm((p) => ({ ...p, titulo: '', descricao: '', data_inicio: selected, data_fim: '', tipo: 'EVENTO', obra_id: '', responsavel_id: '' }))
+    setForm((p) => ({ ...p, titulo: '', descricao: '', data_inicio: selected, data_fim: '', tipo: 'EVENTO', obra_id: '_none_', responsavel_id: '_none_' }))
     setOpen(true)
   }
 
@@ -178,8 +178,8 @@ export default function AgendaClient({ eventos, cronogramas, obras, membros, use
       data_inicio: new Date(form.data_inicio + 'T12:00:00').toISOString(),
       data_fim: form.data_fim ? new Date(form.data_fim + 'T12:00:00').toISOString() : null,
       tipo: form.tipo,
-      obra_id: form.obra_id || null,
-      responsavel_id: form.responsavel_id || null,
+      obra_id: form.obra_id === '_none_' ? null : form.obra_id,
+      responsavel_id: form.responsavel_id === '_none_' ? null : form.responsavel_id,
     })
     setSaving(false)
     if (error) { toast.error(`Erro: ${error.message}`); return }
@@ -425,7 +425,7 @@ export default function AgendaClient({ eventos, cronogramas, obras, membros, use
                 <Select value={form.obra_id} onValueChange={(v) => setForm((p) => ({ ...p, obra_id: v }))}>
                   <SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhuma</SelectItem>
+                    <SelectItem value="_none_">Nenhuma</SelectItem>
                     {obras.map((o) => <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -436,7 +436,7 @@ export default function AgendaClient({ eventos, cronogramas, obras, membros, use
               <Select value={form.responsavel_id} onValueChange={(v) => setForm((p) => ({ ...p, responsavel_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Sem responsável" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sem responsável</SelectItem>
+                  <SelectItem value="_none_">Sem responsável</SelectItem>
                   {membros.map((m) => <SelectItem key={m.id} value={m.id}>{m.name ?? m.id}</SelectItem>)}
                 </SelectContent>
               </Select>

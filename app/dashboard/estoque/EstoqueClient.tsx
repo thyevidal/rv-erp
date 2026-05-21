@@ -76,7 +76,7 @@ export default function EstoqueClient({ itens, movimentacoes, obras, orgId }: Pr
     valor_unitario: '', localizacao: '',
   })
   const [formMov, setFormMov] = useState({
-    quantidade: '', obra_id: '', responsavel: '', observacao: '',
+    quantidade: '', obra_id: '_none_', responsavel: '', observacao: '',
   })
 
   const categorias = useMemo(() => {
@@ -94,7 +94,7 @@ export default function EstoqueClient({ itens, movimentacoes, obras, orgId }: Pr
 
   function openModal(type: ModalType, item?: Item) {
     setSelectedItem(item ?? null)
-    setFormMov({ quantidade: '', obra_id: '', responsavel: '', observacao: '' })
+    setFormMov({ quantidade: '', obra_id: '_none_', responsavel: '', observacao: '' })
     setModal(type)
   }
 
@@ -146,7 +146,7 @@ export default function EstoqueClient({ itens, movimentacoes, obras, orgId }: Pr
     const { error: movErr } = await supabase.from('estoque_movimentacoes').insert({
       organization_id: orgId,
       item_id: selectedItem.id,
-      obra_id: formMov.obra_id || null,
+      obra_id: formMov.obra_id === '_none_' ? null : formMov.obra_id,
       tipo,
       quantidade: qtd,
       data: new Date().toISOString().split('T')[0],
@@ -359,7 +359,7 @@ export default function EstoqueClient({ itens, movimentacoes, obras, orgId }: Pr
                       <Select value={formMov.obra_id} onValueChange={(v) => setFormMov((p) => ({ ...p, obra_id: v }))}>
                         <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Nenhuma</SelectItem>
+                          <SelectItem value="_none_">Nenhuma</SelectItem>
                           {obras.map((o) => <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>)}
                         </SelectContent>
                       </Select>
