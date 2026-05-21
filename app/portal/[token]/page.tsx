@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
-import { formatDate } from '@/lib/utils'
-import { CheckCircle2, Circle, Download, ChevronRight } from 'lucide-react'
+import PortalUploadForm from './PortalUploadForm'
 
 const FASES = [
     { n: 1, titulo: 'Análise de crédito' },
@@ -180,75 +179,7 @@ export default async function PortalPage({ params }: { params: { token: string }
                             <p style={{ fontSize: '13px', color: '#6B6860', marginBottom: '16px' }}>
                                 Selecione o arquivo abaixo para enviá-lo diretamente para o construtor. Todos os formatos são aceitos (PDF, imagens, ZIP, etc.).
                             </p>
-                            <form
-                                id="upload-form"
-                                style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
-                            >
-                                <input type="hidden" name="token" value={token} />
-                                <div className="upload-area" onClick={() => {
-                                    const el = document.getElementById('file-input') as HTMLInputElement
-                                    if (el) el.click()
-                                }}>
-                                    <div id="upload-label" style={{ fontSize: '13px', color: '#6B6860' }}>
-                                        📎 Clique aqui para selecionar o arquivo
-                                    </div>
-                                </div>
-                                <input
-                                    id="file-input"
-                                    name="file"
-                                    type="file"
-                                    style={{ display: 'none' }}
-                                    onChange={() => {
-                                        const input = document.getElementById('file-input') as HTMLInputElement
-                                        const label = document.getElementById('upload-label')
-                                        if (label && input.files?.[0]) {
-                                            label.textContent = `📄 ${input.files[0].name}`
-                                        }
-                                    }}
-                                />
-                                <button
-                                    type="button"
-                                    id="upload-btn"
-                                    style={{
-                                        padding: '10px 20px', background: '#0F6E56', color: 'white',
-                                        border: 'none', borderRadius: '8px', fontSize: '14px',
-                                        fontWeight: '600', cursor: 'pointer', width: '100%',
-                                    }}
-                                    onClick={async () => {
-                                        const input = document.getElementById('file-input') as HTMLInputElement
-                                        const btn = document.getElementById('upload-btn') as HTMLButtonElement
-                                        const status = document.getElementById('upload-status')
-                                        if (!input.files?.length) {
-                                            if (status) { status.textContent = '⚠️ Selecione um arquivo primeiro.'; status.style.color = '#854F0B' }
-                                            return
-                                        }
-                                        btn.disabled = true
-                                        btn.textContent = 'Enviando...'
-                                        const fd = new FormData()
-                                        fd.append('token', `${token}`)
-                                        fd.append('file', input.files[0])
-                                        try {
-                                            const res = await fetch('/api/portal/upload', { method: 'POST', body: fd })
-                                            const json = await res.json()
-                                            if (res.ok) {
-                                                if (status) { status.textContent = '✅ Documento enviado com sucesso! A página será atualizada.'; status.style.color = '#0F6E56' }
-                                                setTimeout(() => window.location.reload(), 1800)
-                                            } else {
-                                                if (status) { status.textContent = `❌ Erro: ${json.error}`; status.style.color = '#B91C1C' }
-                                                btn.disabled = false
-                                                btn.textContent = 'Enviar documento'
-                                            }
-                                        } catch {
-                                            if (status) { status.textContent = '❌ Falha de conexão. Tente novamente.'; status.style.color = '#B91C1C' }
-                                            btn.disabled = false
-                                            btn.textContent = 'Enviar documento'
-                                        }
-                                    }}
-                                >
-                                    Enviar documento
-                                </button>
-                                <div id="upload-status" style={{ fontSize: '12px', textAlign: 'center', minHeight: '16px' }} />
-                            </form>
+                            <PortalUploadForm token={token} />
                         </div>
                     )}
 
