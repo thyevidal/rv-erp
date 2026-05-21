@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -26,38 +26,41 @@ import { cn } from '@/lib/utils'
 
 export type BlockId = 'kpis' | 'charts' | 'composicao' | 'insights'
 
-const BLOCK_LABELS: Record<BlockId, string> = {
+export const BLOCK_LABELS: Record<BlockId, string> = {
   kpis: 'KPIs — Indicadores principais',
   charts: 'Gráficos',
   composicao: 'Composição Geral dos Orçamentos',
   insights: 'Insights',
 }
 
-const DEFAULT_ORDER: BlockId[] = ['kpis', 'charts', 'composicao', 'insights']
+export const DEFAULT_ORDER: BlockId[] = ['kpis', 'charts', 'composicao', 'insights']
+
+export function parseDashboardLayout(raw: unknown): BlockId[] {
+  if (!Array.isArray(raw)) return DEFAULT_ORDER
+  const valid = raw.filter((x): x is BlockId => typeof x === 'string' && x in BLOCK_LABELS)
+  const missing = DEFAULT_ORDER.filter((b) => !valid.includes(b))
+  return [...valid, ...missing]
+}
 
 interface Props {
   initialOrder: BlockId[]
   userId: string
-  children: (order: BlockId[]) => React.ReactNode
+  // Blocos já renderizados pelo Server Component — passados como ReactNode (serializável)
+  kpis: React.ReactNode
+  charts: React.ReactNode
+  composicao: React.ReactNode
+  insights: React.ReactNode
 }
 
-function SortableBlock({ id, editing }: { id: BlockId; editing: boolean }) {
+function SortableRow({ id }: { id: BlockId }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
-
-  if (!editing) return null
-
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        'flex items-center gap-3 px-4 py-3 bg-card border border-border/60 rounded-lg cursor-default select-none',
-        isDragging ? 'opacity-50 shadow-lg z-50' : '',
+        'flex items-center gap-3 px-4 py-3 bg-card border border-border/60 rounded-lg select-none',
+        isDragging && 'opacity-50 shadow-lg',
       )}
     >
       <button
@@ -72,19 +75,13 @@ function SortableBlock({ id, editing }: { id: BlockId; editing: boolean }) {
   )
 }
 
-export function parseDashboardLayout(raw: unknown): BlockId[] {
-  if (!Array.isArray(raw)) return DEFAULT_ORDER
-  const valid = raw.filter((x): x is BlockId => typeof x === 'string' && x in BLOCK_LABELS)
-  // Garante que todos os blocos existam (adiciona faltantes no fim)
-  const missing = DEFAULT_ORDER.filter((b) => !valid.includes(b))
-  return [...valid, ...missing]
-}
-
-export default function DashboardCustomizer({ initialOrder, userId, children }: Props) {
+export default function DashboardCustomizer({ initialOrder, userId, kpis, charts, composicao, insights }: Props) {
   const supabase = createClient()
   const [order, setOrder] = useState<BlockId[]>(initialOrder)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+
+  const blocks: Record<BlockId, React.ReactNode> = { kpis, charts, composicao, insights }
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -104,10 +101,7 @@ export default function DashboardCustomizer({ initialOrder, userId, children }: 
 
   async function saveLayout() {
     setSaving(true)
-    const { error } = await supabase
-      .from('profiles')
-      .update({ dashboard_layout: order })
-      .eq('id', userId)
+    const { error } = await supabase.from('profiles').update({ dashboard_layout: order }).eq('id', userId)
     setSaving(false)
     if (error) { toast.error('Erro ao salvar layout'); return }
     toast.success('Layout salvo!')
@@ -116,7 +110,7 @@ export default function DashboardCustomizer({ initialOrder, userId, children }: 
 
   return (
     <div className="space-y-8">
-      {/* Barra de personalização */}
+      {/* Header com botão personalizar */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
@@ -124,8 +118,7 @@ export default function DashboardCustomizer({ initialOrder, userId, children }: 
         </div>
         {!editing ? (
           <Button variant="outline" size="sm" className="gap-2" onClick={() => setEditing(true)}>
-            <Pencil className="w-3.5 h-3.5" />
-            Personalizar
+            <Pencil className="w-3.5 h-3.5" />Personalizar
           </Button>
         ) : (
           <div className="flex gap-2">
@@ -140,26 +133,26 @@ export default function DashboardCustomizer({ initialOrder, userId, children }: 
         )}
       </div>
 
-      {/* Modo edição: lista arrastável */}
+      {/* Modo edição — lista arrastável */}
       {editing && (
         <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
-          <p className="text-sm font-medium text-primary">
-            Arraste os blocos para reorganizar a dashboard
-          </p>
+          <p className="text-sm font-medium text-primary">Arraste os blocos para reorganizar</p>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={order} strategy={verticalListSortingStrategy}>
               <div className="space-y-2">
-                {order.map((id) => (
-                  <SortableBlock key={id} id={id} editing={editing} />
-                ))}
+                {order.map((id) => <SortableRow key={id} id={id} />)}
               </div>
             </SortableContext>
           </DndContext>
         </div>
       )}
 
-      {/* Renderiza os blocos na ordem atual */}
-      {children(order)}
+      {/* Blocos na ordem atual */}
+      {order.map((id) => (
+        <div key={id}>
+          {blocks[id]}
+        </div>
+      ))}
     </div>
   )
 }
