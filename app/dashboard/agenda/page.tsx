@@ -40,7 +40,7 @@ export default async function AgendaPage() {
         : Promise.resolve({ data: [] }),
       supabase
         .from('profiles')
-        .select('id, name')
+        .select('id, name, email')
         .eq('organization_id', orgId),
     ])
 

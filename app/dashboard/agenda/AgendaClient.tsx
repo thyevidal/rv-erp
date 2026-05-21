@@ -43,7 +43,7 @@ type CronItem = {
 }
 
 type Obra = { id: string; nome: string }
-type Membro = { id: string; name: string | null }
+type Membro = { id: string; name: string | null; email: string | null }
 
 interface Props {
   eventos: Evento[]
@@ -437,7 +437,7 @@ export default function AgendaClient({ eventos, cronogramas, obras, membros, use
                 <SelectTrigger><SelectValue placeholder="Sem responsável" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_none_">Sem responsável</SelectItem>
-                  {membros.map((m) => <SelectItem key={m.id} value={m.id}>{m.name ?? m.id}</SelectItem>)}
+                  {membros.map((m) => <SelectItem key={m.id} value={m.id}>{m.name ?? m.email ?? m.id}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
