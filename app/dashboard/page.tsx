@@ -8,7 +8,8 @@ import {
 } from 'lucide-react'
 import DashboardCharts from '@/components/dashboard/DashboardCharts'
 import ComposicaoModal from '@/components/dashboard/ComposicaoModal'
-import DashboardCustomizer, { parseDashboardLayout } from '@/components/dashboard/DashboardCustomizer'
+import DashboardCustomizer from '@/components/dashboard/DashboardCustomizer'
+import { parseDashboardLayout } from '@/lib/dashboard-layout'
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   PLANEJAMENTO: { label: 'Planejamento', color: 'bg-blue-500/15 text-blue-400 border-blue-500/30', icon: Clock },

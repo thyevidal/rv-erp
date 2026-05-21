@@ -23,24 +23,10 @@ import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { type BlockId, BLOCK_LABELS, DEFAULT_ORDER } from '@/lib/dashboard-layout'
 
-export type BlockId = 'kpis' | 'charts' | 'composicao' | 'insights'
-
-export const BLOCK_LABELS: Record<BlockId, string> = {
-  kpis: 'KPIs — Indicadores principais',
-  charts: 'Gráficos',
-  composicao: 'Composição Geral dos Orçamentos',
-  insights: 'Insights',
-}
-
-export const DEFAULT_ORDER: BlockId[] = ['kpis', 'charts', 'composicao', 'insights']
-
-export function parseDashboardLayout(raw: unknown): BlockId[] {
-  if (!Array.isArray(raw)) return DEFAULT_ORDER
-  const valid = raw.filter((x): x is BlockId => typeof x === 'string' && x in BLOCK_LABELS)
-  const missing = DEFAULT_ORDER.filter((b) => !valid.includes(b))
-  return [...valid, ...missing]
-}
+// Re-exporta para compatibilidade (sem executar no servidor)
+export type { BlockId }
 
 interface Props {
   initialOrder: BlockId[]
