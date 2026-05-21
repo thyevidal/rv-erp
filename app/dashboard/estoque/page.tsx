@@ -12,7 +12,7 @@ export default async function EstoquePage() {
     .eq('id', user.id)
     .single()
 
-  const orgId = profile?.organization_id
+  const orgId: string = profile?.organization_id ?? ''
 
   const [{ data: itens }, { data: movimentacoes }, { data: obras }] = await Promise.all([
     supabase

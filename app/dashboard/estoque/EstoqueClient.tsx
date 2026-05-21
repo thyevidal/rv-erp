@@ -131,6 +131,7 @@ export default function EstoqueClient({ itens, movimentacoes, obras, orgId }: Pr
       return
     }
 
+    if (!orgId) { toast.error('Organização não encontrada. Recarregue a página.'); return }
     setSaving(true)
 
     // Calcular novas quantidades
@@ -138,29 +139,32 @@ export default function EstoqueClient({ itens, movimentacoes, obras, orgId }: Pr
     let delta_disponivel = 0
     if (tipo === 'ENTRADA') { delta_total = qtd; delta_disponivel = qtd }
     else if (tipo === 'SAIDA' || tipo === 'BAIXA') { delta_total = -qtd; delta_disponivel = -qtd }
-    else if (tipo === 'ALOCACAO') { delta_disponivel = -qtd } // total não muda
-    else if (tipo === 'DEVOLUCAO') { delta_disponivel = qtd } // total não muda
+    else if (tipo === 'ALOCACAO') { delta_disponivel = -qtd }
+    else if (tipo === 'DEVOLUCAO') { delta_disponivel = qtd }
 
-    const [{ error: movErr }, { error: itemErr }] = await Promise.all([
-      supabase.from('estoque_movimentacoes').insert({
-        organization_id: orgId,
-        item_id: selectedItem.id,
-        obra_id: formMov.obra_id || null,
-        tipo,
-        quantidade: qtd,
-        data: new Date().toISOString().split('T')[0],
-        responsavel: formMov.responsavel || null,
-        observacao: formMov.observacao || null,
-      }),
-      supabase.from('estoque_itens').update({
-        quantidade_total: selectedItem.quantidade_total + delta_total,
-        quantidade_disponivel: selectedItem.quantidade_disponivel + delta_disponivel,
-        updated_at: new Date().toISOString(),
-      }).eq('id', selectedItem.id),
-    ])
+    // Registrar movimentação
+    const { error: movErr } = await supabase.from('estoque_movimentacoes').insert({
+      organization_id: orgId,
+      item_id: selectedItem.id,
+      obra_id: formMov.obra_id || null,
+      tipo,
+      quantidade: qtd,
+      data: new Date().toISOString().split('T')[0],
+      responsavel: formMov.responsavel || null,
+      observacao: formMov.observacao || null,
+    })
+
+    if (movErr) { setSaving(false); toast.error(`Erro ao registrar: ${movErr.message}`); return }
+
+    // Atualizar quantidades do item
+    const { error: itemErr } = await supabase.from('estoque_itens').update({
+      quantidade_total: selectedItem.quantidade_total + delta_total,
+      quantidade_disponivel: selectedItem.quantidade_disponivel + delta_disponivel,
+      updated_at: new Date().toISOString(),
+    }).eq('id', selectedItem.id)
 
     setSaving(false)
-    if (movErr || itemErr) { toast.error(movErr?.message ?? itemErr?.message); return }
+    if (itemErr) { toast.error(`Movimentação salva, mas erro ao atualizar item: ${itemErr.message}`); return }
     toast.success('Movimentação registrada!')
     setModal(null)
     router.refresh()
@@ -281,7 +285,15 @@ export default function EstoqueClient({ itens, movimentacoes, obras, orgId }: Pr
               </div>
               <div className="space-y-1.5">
                 <Label>Categoria</Label>
-                <Input value={formItem.categoria} onChange={(e) => setFormItem((p) => ({ ...p, categoria: e.target.value }))} />
+                <Input
+                  list="categorias-list"
+                  value={formItem.categoria}
+                  onChange={(e) => setFormItem((p) => ({ ...p, categoria: e.target.value }))}
+                  placeholder="Ex: Ferramentas, EPI..."
+                />
+                <datalist id="categorias-list">
+                  {categorias.map((c) => <option key={c} value={c} />)}
+                </datalist>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">

@@ -168,20 +168,21 @@ export default function AgendaClient({ eventos, cronogramas, obras, membros, use
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     if (!form.titulo.trim()) { toast.error('Título é obrigatório'); return }
+    if (!orgId) { toast.error('Organização não encontrada. Recarregue a página.'); return }
     setSaving(true)
     const { error } = await supabase.from('agenda_eventos').insert({
       organization_id: orgId,
       criado_por: userId,
       titulo: form.titulo.trim(),
       descricao: form.descricao || null,
-      data_inicio: form.data_inicio,
-      data_fim: form.data_fim || null,
+      data_inicio: new Date(form.data_inicio + 'T12:00:00').toISOString(),
+      data_fim: form.data_fim ? new Date(form.data_fim + 'T12:00:00').toISOString() : null,
       tipo: form.tipo,
       obra_id: form.obra_id || null,
       responsavel_id: form.responsavel_id || null,
     })
     setSaving(false)
-    if (error) { toast.error(error.message); return }
+    if (error) { toast.error(`Erro: ${error.message}`); return }
     toast.success('Evento criado!')
     setOpen(false)
     router.refresh()
