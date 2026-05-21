@@ -139,6 +139,11 @@ export default function EstoqueClient({ itens, movimentacoes, obras, orgId }: Pr
     quantidade: '', obra_id: '_none_', responsavel: '', observacao: '',
   })
 
+  // Estado dedicado para o modal de devolução
+  const [selectedAlocacao, setSelectedAlocacao] = useState<AlocacaoAtiva | null>(null)
+  const [devolucaoQtd, setDevolucaoQtd] = useState('')
+  const [devolucaoObs, setDevolucaoObs] = useState('')
+
   const categorias = useMemo(() => {
     const set = new Set(itens.map((i) => i.categoria).filter(Boolean) as string[])
     return Array.from(set).sort()
@@ -166,7 +171,46 @@ export default function EstoqueClient({ itens, movimentacoes, obras, orgId }: Pr
   function openModal(type: ModalType, item?: Item) {
     setSelectedItem(item ?? null)
     setFormMov({ quantidade: '', obra_id: '_none_', responsavel: '', observacao: '' })
+    // Reseta estado da devolução
+    setSelectedAlocacao(null)
+    setDevolucaoQtd('')
+    setDevolucaoObs('')
     setModal(type)
+  }
+
+  async function handleDevolucao() {
+    if (!selectedItem || !selectedAlocacao) return
+    const qtd = parseFloat(devolucaoQtd.replace(',', '.'))
+    if (!qtd || qtd <= 0) { toast.error('Quantidade inválida'); return }
+    if (qtd > selectedAlocacao.quantidade) {
+      toast.error(`Máximo a devolver: ${selectedAlocacao.quantidade} ${selectedItem.unidade}`)
+      return
+    }
+    if (!orgId) { toast.error('Organização não encontrada. Recarregue a página.'); return }
+    setSaving(true)
+
+    const { error: movErr } = await supabase.from('estoque_movimentacoes').insert({
+      organization_id: orgId,
+      item_id: selectedItem.id,
+      obra_id: selectedAlocacao.obra_id,
+      tipo: 'DEVOLUCAO',
+      quantidade: qtd,
+      data: new Date().toISOString().split('T')[0],
+      responsavel: selectedAlocacao.responsavel || null,
+      observacao: devolucaoObs || null,
+    })
+    if (movErr) { setSaving(false); toast.error(`Erro: ${movErr.message}`); return }
+
+    const { error: itemErr } = await supabase.from('estoque_itens').update({
+      quantidade_disponivel: selectedItem.quantidade_disponivel + qtd,
+      updated_at: new Date().toISOString(),
+    }).eq('id', selectedItem.id)
+
+    setSaving(false)
+    if (itemErr) { toast.error(`Devolução salva, mas erro ao atualizar item: ${itemErr.message}`); return }
+    toast.success('Devolução registrada!')
+    setModal(null)
+    router.refresh()
   }
 
   async function handleSaveItem(e: React.FormEvent) {
@@ -427,8 +471,8 @@ export default function EstoqueClient({ itens, movimentacoes, obras, orgId }: Pr
         </DialogContent>
       </Dialog>
 
-      {/* Modais de movimentação (entrada / alocar / devolver / baixa) */}
-      {(['entrada', 'alocar', 'devolver', 'baixa'] as ModalType[]).map((tipo) => (
+      {/* Modais de movimentação (entrada / alocar / baixa) — devolver tem modal próprio */}
+      {(['entrada', 'alocar', 'baixa'] as ModalType[]).map((tipo) => (
         <Dialog key={tipo} open={modal === tipo} onOpenChange={(o) => !o && setModal(null)}>
           <DialogContent className="sm:max-w-sm">
             <DialogHeader>
@@ -459,7 +503,7 @@ export default function EstoqueClient({ itens, movimentacoes, obras, orgId }: Pr
                       onChange={(e) => setFormMov((p) => ({ ...p, quantidade: e.target.value }))}
                     />
                   </div>
-                  {(tipo === 'alocar' || tipo === 'devolver') && (
+                  {tipo === 'alocar' && (
                     <div className="space-y-1.5">
                       <Label>Obra</Label>
                       <Select value={formMov.obra_id} onValueChange={(v) => setFormMov((p) => ({ ...p, obra_id: v }))}>
@@ -487,7 +531,6 @@ export default function EstoqueClient({ itens, movimentacoes, obras, orgId }: Pr
                     onClick={() => handleMovimentacao(
                       tipo === 'entrada' ? 'ENTRADA'
                         : tipo === 'alocar' ? (selectedItem.consumivel ? 'BAIXA' : 'ALOCACAO')
-                        : tipo === 'devolver' ? 'DEVOLUCAO'
                         : 'BAIXA'
                     )}
                   >
@@ -499,6 +542,114 @@ export default function EstoqueClient({ itens, movimentacoes, obras, orgId }: Pr
           </DialogContent>
         </Dialog>
       ))}
+
+      {/* Modal devolução — seleciona qual alocação está sendo devolvida */}
+      <Dialog open={modal === 'devolver'} onOpenChange={(o) => !o && setModal(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Registrar Devolução — {selectedItem?.nome}</DialogTitle>
+          </DialogHeader>
+          {selectedItem && (() => {
+            const alocacoes = alocacoesMap.get(selectedItem.id) ?? []
+            if (alocacoes.length === 0) {
+              return (
+                <div className="py-8 text-center text-sm text-muted-foreground">
+                  Nenhuma alocação ativa para este item.
+                </div>
+              )
+            }
+            return (
+              <div className="space-y-4 pt-2">
+                <p className="text-sm text-muted-foreground">
+                  Selecione qual alocação está sendo devolvida:
+                </p>
+
+                {/* Cards de alocação selecionáveis */}
+                <div className="space-y-2">
+                  {alocacoes.map((a) => {
+                    const isSelected = selectedAlocacao?.key === a.key
+                    return (
+                      <button
+                        key={a.key}
+                        type="button"
+                        onClick={() => {
+                          setSelectedAlocacao(a)
+                          setDevolucaoQtd(String(a.quantidade))
+                        }}
+                        className={cn(
+                          'w-full text-left rounded-lg border-2 px-3 py-2.5 transition-all',
+                          isSelected
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary/40 hover:bg-muted/30',
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <MapPin className={cn('w-3.5 h-3.5 shrink-0', isSelected ? 'text-primary' : 'text-blue-500')} />
+                            <span className="text-sm font-medium">
+                              {a.obra_nome ?? 'Sem obra vinculada'}
+                            </span>
+                          </div>
+                          <span className={cn('text-sm font-semibold', isSelected ? 'text-primary' : 'text-blue-600')}>
+                            {a.quantidade} {selectedItem.unidade}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1 pl-5">
+                          {a.responsavel && (
+                            <span className="text-xs text-muted-foreground">👤 {a.responsavel}</span>
+                          )}
+                          <span className="text-xs text-muted-foreground">· {tempoAtras(a.data)}</span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Quantidade e observação — só aparecem após selecionar */}
+                {selectedAlocacao && (
+                  <div className="space-y-3 pt-1 border-t border-border/60">
+                    <div className="space-y-1.5">
+                      <Label>
+                        Quantidade a devolver
+                        <span className="text-muted-foreground font-normal ml-1.5 text-xs">
+                          (máx: {selectedAlocacao.quantidade} {selectedItem.unidade})
+                        </span>
+                      </Label>
+                      <Input
+                        type="number"
+                        step="0.001"
+                        min="0.001"
+                        max={selectedAlocacao.quantidade}
+                        value={devolucaoQtd}
+                        onChange={(e) => setDevolucaoQtd(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Observação (opcional)</Label>
+                      <Input
+                        value={devolucaoObs}
+                        onChange={(e) => setDevolucaoObs(e.target.value)}
+                        placeholder="Estado do item, condição ao devolver..."
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setModal(null)}>Cancelar</Button>
+                  <Button
+                    disabled={saving || !selectedAlocacao}
+                    onClick={handleDevolucao}
+                  >
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                    Confirmar devolução
+                  </Button>
+                </DialogFooter>
+              </div>
+            )
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Modal histórico — timeline de movimentações */}
       <Dialog open={modal === 'historico'} onOpenChange={(o) => !o && setModal(null)}>
