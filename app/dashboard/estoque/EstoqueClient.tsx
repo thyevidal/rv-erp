@@ -57,7 +57,7 @@ const TIPO_MOV = {
   BAIXA:     { label: 'Baixa',     icon: X,               color: 'text-red-400',    bg: 'bg-red-400/10'    },
 }
 
-type ModalType = 'novo-item' | 'entrada' | 'alocar' | 'devolver' | 'baixa' | 'historico' | null
+type ModalType = 'novo-item' | 'entrada' | 'alocar' | 'devolver' | 'baixa' | 'descartar' | 'historico' | null
 
 /** Retorna tempo relativo em pt-BR */
 function tempoAtras(dataStr: string): string {
@@ -144,6 +144,11 @@ export default function EstoqueClient({ itens, movimentacoes, obras, orgId }: Pr
   const [devolucaoQtd, setDevolucaoQtd] = useState('')
   const [devolucaoObs, setDevolucaoObs] = useState('')
 
+  // Estado dedicado para descarte/perda
+  const [descartarMotivo, setDescartarMotivo] = useState('Descartado')
+  const [descartarQtd, setDescartarQtd] = useState('')
+  const [descartarObs, setDescartarObs] = useState('')
+
   const categorias = useMemo(() => {
     const set = new Set(itens.map((i) => i.categoria).filter(Boolean) as string[])
     return Array.from(set).sort()
@@ -175,6 +180,10 @@ export default function EstoqueClient({ itens, movimentacoes, obras, orgId }: Pr
     setSelectedAlocacao(null)
     setDevolucaoQtd('')
     setDevolucaoObs('')
+    // Reseta estado do descarte
+    setDescartarMotivo('Descartado')
+    setDescartarQtd('')
+    setDescartarObs('')
     setModal(type)
   }
 
@@ -275,6 +284,44 @@ export default function EstoqueClient({ itens, movimentacoes, obras, orgId }: Pr
     setSaving(false)
     if (itemErr) { toast.error(`Movimentação salva, mas erro ao atualizar item: ${itemErr.message}`); return }
     toast.success('Movimentação registrada!')
+    setModal(null)
+    router.refresh()
+  }
+
+  async function handleDescartar() {
+    if (!selectedItem) return
+    const qtd = parseFloat(descartarQtd.replace(',', '.'))
+    if (!qtd || qtd <= 0) { toast.error('Quantidade inválida'); return }
+    if (qtd > selectedItem.quantidade_disponivel) {
+      toast.error(`Apenas itens disponíveis podem ser descartados. Disponível: ${selectedItem.quantidade_disponivel} ${selectedItem.unidade}`)
+      return
+    }
+    if (!orgId) { toast.error('Organização não encontrada.'); return }
+    setSaving(true)
+
+    const obs = [descartarMotivo, descartarObs].filter(Boolean).join(' — ')
+
+    const { error: movErr } = await supabase.from('estoque_movimentacoes').insert({
+      organization_id: orgId,
+      item_id: selectedItem.id,
+      obra_id: null,
+      tipo: 'BAIXA',
+      quantidade: qtd,
+      data: new Date().toISOString().split('T')[0],
+      responsavel: null,
+      observacao: obs,
+    })
+    if (movErr) { setSaving(false); toast.error(`Erro: ${movErr.message}`); return }
+
+    const { error: itemErr } = await supabase.from('estoque_itens').update({
+      quantidade_total: selectedItem.quantidade_total - qtd,
+      quantidade_disponivel: selectedItem.quantidade_disponivel - qtd,
+      updated_at: new Date().toISOString(),
+    }).eq('id', selectedItem.id)
+
+    setSaving(false)
+    if (itemErr) { toast.error(`Baixa salva, mas erro ao atualizar item: ${itemErr.message}`); return }
+    toast.success('Registro de descarte/perda salvo.')
     setModal(null)
     router.refresh()
   }
@@ -400,6 +447,11 @@ export default function EstoqueClient({ itens, movimentacoes, obras, orgId }: Pr
                         {!item.consumivel && (
                           <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => openModal('devolver', item)}>
                             <RotateCcw className="w-3 h-3" />Devolver
+                          </Button>
+                        )}
+                        {!item.consumivel && (
+                          <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-red-400 hover:text-red-500 hover:bg-red-50" onClick={() => openModal('descartar', item)}>
+                            <X className="w-3 h-3" />Descartar
                           </Button>
                         )}
                         <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-muted-foreground" onClick={() => openModal('historico', item)}>
@@ -648,6 +700,74 @@ export default function EstoqueClient({ itens, movimentacoes, obras, orgId }: Pr
               </div>
             )
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal descarte / perda */}
+      <Dialog open={modal === 'descartar'} onOpenChange={(o) => !o && setModal(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Descartar / Registrar Perda — {selectedItem?.nome}</DialogTitle>
+          </DialogHeader>
+          {selectedItem && (
+            <div className="space-y-4 pt-2">
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+                ⚠️ Esta ação reduz o estoque permanentemente. Use para itens perdidos, danificados ou descartados que não voltarão ao estoque.
+              </div>
+              <div className="bg-muted/40 rounded-lg px-3 py-2 text-sm flex items-center justify-between">
+                <span className="font-medium">{selectedItem.nome}</span>
+                <span className="text-muted-foreground text-xs">
+                  Disponível: <strong>{selectedItem.quantidade_disponivel} {selectedItem.unidade}</strong>
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Quantidade *</Label>
+                  <Input
+                    type="number"
+                    step="0.001"
+                    min="0.001"
+                    max={selectedItem.quantidade_disponivel}
+                    placeholder={`em ${selectedItem.unidade}`}
+                    value={descartarQtd}
+                    onChange={(e) => setDescartarQtd(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Motivo</Label>
+                  <Select value={descartarMotivo} onValueChange={setDescartarMotivo}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Descartado">Descartado</SelectItem>
+                      <SelectItem value="Perdido">Perdido</SelectItem>
+                      <SelectItem value="Danificado/Quebrado">Danificado / Quebrado</SelectItem>
+                      <SelectItem value="Furto">Furto</SelectItem>
+                      <SelectItem value="Outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Observação (opcional)</Label>
+                <Input
+                  value={descartarObs}
+                  onChange={(e) => setDescartarObs(e.target.value)}
+                  placeholder="Detalhes, número de registro, etc."
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setModal(null)}>Cancelar</Button>
+                <Button
+                  variant="destructive"
+                  disabled={saving}
+                  onClick={handleDescartar}
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                  Confirmar baixa
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

@@ -7,6 +7,9 @@ export async function POST(req: NextRequest) {
   const formData = await req.formData()
   const token = formData.get('token') as string | null
   const file = formData.get('file') as File | null
+  const faseNumeroRaw = formData.get('fase_numero') as string | null
+  const nomeTipo = formData.get('nome_tipo') as string | null
+  const faseNumero = faseNumeroRaw ? parseInt(faseNumeroRaw, 10) : null
 
   if (!token || !file || file.size === 0) {
     return NextResponse.json({ error: 'Token e arquivo são obrigatórios.' }, { status: 400 })
@@ -50,7 +53,8 @@ export async function POST(req: NextRequest) {
     url: publicUrl,
     enviado_por: 'CORRESPONDENTE',
     visivel_cliente: false,
-    fase_numero: null,
+    fase_numero: faseNumero,
+    nome_tipo: nomeTipo,
   })
 
   if (dbErr) {
