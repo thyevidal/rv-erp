@@ -12,7 +12,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="flex flex-col md:flex-row h-screen overflow-hidden">
       <MobileHeader />
-      <Sidebar className="hidden md:flex w-64 shrink-0" />
+      <Sidebar className="hidden md:flex shrink-0" />
       <main className="flex-1 overflow-y-auto overflow-x-hidden bg-background">
         <div className="max-w-7xl mx-auto p-6">
           {children}
