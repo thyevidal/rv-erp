@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Token e arquivo são obrigatórios.' }, { status: 400 })
   }
 
-  // Validar token
+  // Validar token — aceita CORRESPONDENTE e CLIENTE
   const { data: acesso } = await admin
     .from('ac_acessos')
     .select('id, obra_id, tipo, obras(nome)')
@@ -23,13 +23,13 @@ export async function POST(req: NextRequest) {
     .eq('ativo', true)
     .single()
 
-  if (!acesso || acesso.tipo !== 'CORRESPONDENTE') {
+  if (!acesso || (acesso.tipo !== 'CORRESPONDENTE' && acesso.tipo !== 'CLIENTE')) {
     return NextResponse.json({ error: 'Token inválido ou sem permissão de envio.' }, { status: 403 })
   }
 
   // Fazer upload no Storage
-  const ext = file.name.split('.').pop()
-  const path = `${acesso.obra_id}/correspondente/${Date.now()}-${file.name}`
+  const pasta = acesso.tipo === 'CLIENTE' ? 'cliente' : 'correspondente'
+  const path = `${acesso.obra_id}/${pasta}/${Date.now()}-${file.name}`
   const arrayBuffer = await file.arrayBuffer()
   const buffer = Buffer.from(arrayBuffer)
 
@@ -47,12 +47,15 @@ export async function POST(req: NextRequest) {
   const { data: { publicUrl } } = admin.storage.from('ac-documentos').getPublicUrl(path)
 
   // Registrar na tabela de documentos
+  // Documentos do cliente: ficam invisíveis para todos até o construtor aprovar
+  // Documentos do correspondente: ficam invisíveis para o cliente até o construtor aprovar
   const { error: dbErr } = await admin.from('ac_documentos').insert({
     obra_id: acesso.obra_id,
     nome: file.name,
     url: publicUrl,
-    enviado_por: 'CORRESPONDENTE',
+    enviado_por: acesso.tipo, // 'CORRESPONDENTE' ou 'CLIENTE'
     visivel_cliente: false,
+    visivel_correspondente: false,
     fase_numero: faseNumero,
     nome_tipo: nomeTipo,
   })

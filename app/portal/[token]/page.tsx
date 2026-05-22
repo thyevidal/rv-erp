@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import PortalCorrespSection from './PortalCorrespSection'
+import PortalClientSection from './PortalClientSection'
 
 const FASES = [
   { n: 1, titulo: 'Análise de crédito' },
@@ -33,7 +34,7 @@ export default async function PortalPage({ params }: { params: { token: string }
     supabase.from('ac_checklist').select('*').eq('obra_id', obra.id),
     supabase
       .from('ac_documentos')
-      .select('id, nome, url, enviado_por, visivel_cliente, fase_numero, nome_tipo, created_at')
+      .select('id, nome, url, enviado_por, visivel_cliente, visivel_correspondente, fase_numero, nome_tipo, created_at')
       .eq('obra_id', obra.id)
       .order('created_at', { ascending: false }),
   ])
@@ -45,12 +46,23 @@ export default async function PortalPage({ params }: { params: { token: string }
 
   const docs = documentos ?? []
 
-  // Separar documentos por remetente
+  // ── Separar documentos por remetente ──────────────────────────────────────
   const docsConstrutora = docs.filter((d) => d.enviado_por === 'CONSTRUTOR')
   const docsCorrespondente = docs.filter((d) => d.enviado_por === 'CORRESPONDENTE')
-  // Para cliente: só documentos visíveis
+  const docsCliente = docs.filter((d) => d.enviado_por === 'CLIENTE')
+
+  // Para portal do CORRESPONDENTE:
+  // - Construtora: apenas os marcados como visíveis para correspondente
+  // - Cliente: apenas os marcados como visíveis para correspondente (aprovados pelo construtor)
+  const docsConstrutoraParaCorresp = docsConstrutora.filter((d) => d.visivel_correspondente)
+  const docsClienteParaCorresp = docsCliente.filter((d) => d.visivel_correspondente)
+
+  // Para portal do CLIENTE:
+  // - Construtora: apenas os marcados como visíveis para cliente
+  // - Correspondente: apenas os marcados como visíveis para cliente (aprovados pelo construtor)
   const docsConstrutoraParaCliente = docsConstrutora.filter((d) => d.visivel_cliente)
-  const docsEnviadosParaCliente = docsCorrespondente.filter((d) => d.visivel_cliente)
+  const docsCorrespParaCliente = docsCorrespondente.filter((d) => d.visivel_cliente)
+  // Os próprios docs do cliente aparecem todos (o cliente vê seus próprios uploads)
 
   const corHeader = isCliente ? '#3C3489' : '#0F6E56'
   const corAccent = isCliente ? '#7F77DD' : '#1D9E75'
@@ -95,8 +107,6 @@ export default async function PortalPage({ params }: { params: { token: string }
           .btn-down { padding: 6px 12px; background: #F2F0EC; border: 1px solid #E2DFD8; border-radius: 6px; font-size: 12px; font-weight: 500; color: #1A1916; text-decoration: none; display: inline-block; }
           .alert { background: #FAEEDA; border: 1px solid #FAC775; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #854F0B; margin-bottom: 16px; }
           .footer { text-align: center; font-size: 12px; color: #A09D97; padding: 24px; }
-          .upload-area { border: 1.5px dashed #C8C4BC; border-radius: 8px; padding: 24px; text-align: center; cursor: pointer; }
-          .upload-area:hover { background: #F2F0EC; }
         `}</style>
       </head>
       <body>
@@ -148,64 +158,35 @@ export default async function PortalPage({ params }: { params: { token: string }
             </div>
           </div>
 
-          {/* ── CORRESPONDENTE: seção de documentos interativa ─────── */}
+          {/* ── CORRESPONDENTE: seção interativa ─────────────────────── */}
           {isCorrespond && (
             <>
               <div className="alert">
-                📋 Fase atual: <strong>{FASES[faseAtiva - 1].titulo}</strong>. Envie os documentos necessários para dar prosseguimento ao processo.
+                📋 Fase atual: <strong>{FASES[faseAtiva - 1].titulo}</strong>. Envie os documentos técnicos necessários para dar prosseguimento ao processo.
               </div>
               <PortalCorrespSection
                 token={token}
                 faseAtiva={faseAtiva}
-                docsConstrutora={docsConstrutora}
+                docsConstrutora={docsConstrutoraParaCorresp}
+                docsCliente={docsClienteParaCorresp}
                 docsCorrespondente={docsCorrespondente}
               />
             </>
           )}
 
-          {/* ── CLIENTE: dois cards separados, read-only ────────────── */}
+          {/* ── CLIENTE: seção interativa ─────────────────────────────── */}
           {isCliente && (
             <>
-              {/* O que a construtora enviou */}
-              <div className="card">
-                <div className="card-title">📥 Documentos da construtora</div>
-                {docsConstrutoraParaCliente.length === 0 ? (
-                  <p style={{ fontSize: '13px', color: '#A09D97', textAlign: 'center', padding: '12px 0' }}>
-                    Nenhum documento disponível ainda.
-                  </p>
-                ) : (
-                  docsConstrutoraParaCliente.map((doc) => (
-                    <div key={doc.id} className="doc-item">
-                      <div>📄</div>
-                      <div style={{ flex: 1 }}>
-                        <div className="doc-name">{doc.nome}</div>
-                        <div className="doc-sub">{new Date(doc.created_at).toLocaleDateString('pt-BR')}</div>
-                      </div>
-                      <a href={doc.url} target="_blank" rel="noopener noreferrer" className="btn-down">↓ Baixar</a>
-                    </div>
-                  ))
-                )}
+              <div className="alert">
+                📋 Fase atual: <strong>{FASES[faseAtiva - 1].titulo}</strong>. Envie seus documentos pessoais para dar início ao processo.
               </div>
-
-              {/* O que o correspondente/cliente enviou */}
-              {docsEnviadosParaCliente.length > 0 && (
-                <div className="card">
-                  <div className="card-title">📤 Documentos enviados ao processo</div>
-                  {docsEnviadosParaCliente.map((doc) => (
-                    <div key={doc.id} className="doc-item">
-                      <div>📄</div>
-                      <div style={{ flex: 1 }}>
-                        <div className="doc-name">{doc.nome}</div>
-                        <div className="doc-sub">
-                          {doc.nome_tipo ? `${doc.nome_tipo} · ` : ''}
-                          {new Date(doc.created_at).toLocaleDateString('pt-BR')}
-                        </div>
-                      </div>
-                      <a href={doc.url} target="_blank" rel="noopener noreferrer" className="btn-down">↓ Baixar</a>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <PortalClientSection
+                token={token}
+                faseAtiva={faseAtiva}
+                docsConstrutora={docsConstrutoraParaCliente}
+                docsCorrespondente={docsCorrespParaCliente}
+                docsCliente={docsCliente}
+              />
             </>
           )}
 

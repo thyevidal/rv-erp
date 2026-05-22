@@ -17,16 +17,20 @@ type Doc = {
 interface Props {
   token: string
   faseAtiva: number
-  docsConstrutora: Doc[]      // enviado_por = 'CONSTRUTOR'
-  docsCorrespondente: Doc[]   // enviado_por = 'CORRESPONDENTE'
+  // Docs da construtora com visivel_correspondente = true
+  docsConstrutora: Doc[]
+  // Docs do cliente com visivel_correspondente = true (aprovados pelo construtor)
+  docsCliente: Doc[]
+  // Docs do próprio correspondente (para mostrar o que já enviou)
+  docsCorrespondente: Doc[]
 }
 
-// Documentos esperados por fase (processo FGTS/Caixa)
+// Documentos técnicos que o CORRESPONDENTE envia por fase (processo FGTS/Caixa)
 const DOCS_POR_FASE: Record<number, string[]> = {
-  1: ['RG e CPF', 'Comprovante de renda (3 meses)', 'Comprovante de residência', 'Extrato bancário (3 meses)', 'Declaração de IR'],
+  1: [],  // Fase 1: documentos pessoais — enviados pelo cliente
   2: ['Matrícula atualizada do terreno', 'Projeto aprovado pela prefeitura', 'ART ou RRT do projeto'],
   3: ['Memorial descritivo', 'Orçamento detalhado da obra', 'Cronograma físico-financeiro'],
-  4: [],   // Documentos desta fase são da construtora
+  4: [],  // Fase 4: documentos da construtora
   5: ['Fotos da medição', 'Notas fiscais de materiais', 'Relatório de medição'],
   6: ['Habite-se', 'CND da obra', 'Averbação da construção'],
 }
@@ -45,16 +49,16 @@ function slotKey(fase: number | null, nomeTipo: string | null) {
 }
 
 export default function PortalCorrespSection({
-  token, faseAtiva, docsConstrutora, docsCorrespondente,
+  token, faseAtiva, docsConstrutora, docsCliente, docsCorrespondente,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pendingRef = useRef<{ fase: number | null; nomeTipo: string | null } | null>(null)
 
   const [uploadingKey, setUploadingKey] = useState<string | null>(null)
   const [doneKeys, setDoneKeys] = useState<Set<string>>(new Set())
-  // Fases expandidas: começa com a fase ativa + fase 1 se diferente
+  // Fases expandidas: começa com a fase ativa
   const [expanded, setExpanded] = useState<Set<number>>(
-    new Set([1, faseAtiva].filter((n) => n >= 1 && n <= 6)),
+    new Set([faseAtiva].filter((n) => n >= 2 && n <= 6)),
   )
 
   function toggle(n: number) {
@@ -66,9 +70,7 @@ export default function PortalCorrespSection({
   }
 
   function isUploaded(nomeTipo: string): boolean {
-    // Verificar tanto no estado local (upload acabou de ocorrer) quanto nos docs já salvos
     if (docsCorrespondente.some((d) => d.nome_tipo === nomeTipo)) return true
-    // Checa se qualquer fase+nomeTipo está marcado como done
     for (let f = 1; f <= 6; f++) {
       if (doneKeys.has(slotKey(f, nomeTipo))) return true
     }
@@ -118,19 +120,17 @@ export default function PortalCorrespSection({
     }
   }
 
-  // Fases a exibir: 1 até faseAtiva+1 (máx 6)
-  const fasesVisiveis = Array.from({ length: 6 }, (_, i) => i + 1).filter(
-    (n) => n <= Math.min(faseAtiva + 1, 6),
-  )
+  // Fases que têm documentos técnicos do correspondente (excluir 1 e 4)
+  const fasesVisiveis = [2, 3, 5, 6].filter((n) => n <= Math.min(faseAtiva + 1, 6))
 
   return (
     <>
-      {/* ── Documentos da construtora (recebidos) ─────────────────── */}
+      {/* ── Documentos da construtora (recebidos e aprovados) ─── */}
       <div className="card">
-        <div className="card-title">📥 Recebido da construtora</div>
+        <div className="card-title">📥 Documentos da construtora</div>
         {docsConstrutora.length === 0 ? (
           <p style={{ fontSize: '13px', color: '#A09D97', textAlign: 'center', padding: '12px 0' }}>
-            Nenhum documento enviado pela construtora ainda.
+            Nenhum documento disponível ainda.
           </p>
         ) : (
           docsConstrutora.map((doc) => (
@@ -138,23 +138,42 @@ export default function PortalCorrespSection({
               <div>📄</div>
               <div style={{ flex: 1 }}>
                 <div className="doc-name">{doc.nome}</div>
-                <div className="doc-sub">
-                  {new Date(doc.created_at).toLocaleDateString('pt-BR')}
-                </div>
+                <div className="doc-sub">{new Date(doc.created_at).toLocaleDateString('pt-BR')}</div>
               </div>
-              <a href={doc.url} target="_blank" rel="noopener noreferrer" className="btn-down">
-                ↓ Baixar
-              </a>
+              <a href={doc.url} target="_blank" rel="noopener noreferrer" className="btn-down">↓ Baixar</a>
             </div>
           ))
         )}
       </div>
 
-      {/* ── Seus documentos (por fase) ─────────────────────────────── */}
+      {/* ── Documentos do cliente aprovados pelo construtor ─── */}
+      {docsCliente.length > 0 && (
+        <div className="card">
+          <div className="card-title">👤 Documentos do cliente</div>
+          <p style={{ fontSize: '12px', color: '#A09D97', marginBottom: '12px' }}>
+            Documentos pessoais e financeiros enviados pelo cliente e liberados para seu acesso.
+          </p>
+          {docsCliente.map((doc) => (
+            <div key={doc.id} className="doc-item">
+              <div>📄</div>
+              <div style={{ flex: 1 }}>
+                <div className="doc-name">{doc.nome}</div>
+                <div className="doc-sub">
+                  {doc.nome_tipo ? `${doc.nome_tipo} · ` : ''}
+                  {new Date(doc.created_at).toLocaleDateString('pt-BR')}
+                </div>
+              </div>
+              <a href={doc.url} target="_blank" rel="noopener noreferrer" className="btn-down">↓ Baixar</a>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Seus documentos técnicos (por fase) ─────────────────── */}
       <div className="card">
         <div className="card-title">📤 Seus documentos enviados</div>
         <p style={{ fontSize: '12px', color: '#A09D97', marginBottom: '14px' }}>
-          Clique em uma fase para expandir. A fase atual está destacada. Envie os documentos necessários em cada etapa.
+          Envie os documentos técnicos de cada fase. A construtora os receberá e poderá liberar para o cliente.
         </p>
 
         {fasesVisiveis.map((n) => {
@@ -162,7 +181,6 @@ export default function PortalCorrespSection({
           const isAtiva = n === faseAtiva
           const isExp = expanded.has(n)
           const enviados = docsNec.filter((nt) => isUploaded(nt)).length
-          // Docs avulsos desta fase (sem nome_tipo reconhecido ou sem nome_tipo)
           const avulsos = docsCorrespondente.filter(
             (d) => d.fase_numero === n && (!d.nome_tipo || !docsNec.includes(d.nome_tipo)),
           )
@@ -225,73 +243,66 @@ export default function PortalCorrespSection({
               {/* Conteúdo expandido */}
               {isExp && (
                 <div style={{ padding: '12px 14px', borderTop: '1px solid #E2DFD8' }}>
-                  {n === 4 && docsNec.length === 0 ? (
-                    <p style={{ fontSize: '12px', color: '#A09D97', fontStyle: 'italic' }}>
-                      Os documentos desta fase são providenciados pela construtora.
-                    </p>
-                  ) : (
-                    <>
-                      {/* Lista de documentos necessários */}
-                      {docsNec.map((nomeTipo, idx) => {
-                        const uploaded = isUploaded(nomeTipo)
-                        const doc = getDoc(nomeTipo)
-                        const key = slotKey(n, nomeTipo)
-                        const loading = uploadingKey === key
-                        const justDone = doneKeys.has(key)
+                  <>
+                    {docsNec.map((nomeTipo, idx) => {
+                      const uploaded = isUploaded(nomeTipo)
+                      const doc = getDoc(nomeTipo)
+                      const key = slotKey(n, nomeTipo)
+                      const loading = uploadingKey === key
+                      const justDone = doneKeys.has(key)
 
-                        return (
-                          <div
-                            key={nomeTipo}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '10px',
-                              padding: '8px 0',
-                              borderBottom: idx < docsNec.length - 1 ? '1px solid #F0EDEA' : 'none',
-                            }}
-                          >
-                            <span style={{ fontSize: '15px', minWidth: '20px' }}>
-                              {uploaded || justDone ? '✅' : '⬜'}
-                            </span>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: '13px', color: uploaded ? '#A09D97' : '#1A1916' }}>
-                                {nomeTipo}
-                              </div>
-                              {doc && (
-                                <div style={{ fontSize: '11px', color: '#A09D97', marginTop: '2px' }}>
-                                  {doc.nome} ·{' '}
-                                  <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ color: COR }}>
-                                    ver arquivo
-                                  </a>
-                                </div>
-                              )}
+                      return (
+                        <div
+                          key={nomeTipo}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '8px 0',
+                            borderBottom: idx < docsNec.length - 1 ? '1px solid #F0EDEA' : 'none',
+                          }}
+                        >
+                          <span style={{ fontSize: '15px', minWidth: '20px' }}>
+                            {uploaded || justDone ? '✅' : '⬜'}
+                          </span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '13px', color: uploaded ? '#A09D97' : '#1A1916' }}>
+                              {nomeTipo}
                             </div>
-                            {!uploaded && !justDone && (
-                              <button
-                                type="button"
-                                disabled={!!loading}
-                                onClick={() => triggerUpload(n, nomeTipo)}
-                                style={{
-                                  padding: '5px 12px',
-                                  background: loading ? '#A09D97' : COR,
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '6px',
-                                  fontSize: '12px',
-                                  fontWeight: 500,
-                                  cursor: loading ? 'not-allowed' : 'pointer',
-                                  whiteSpace: 'nowrap',
-                                  flexShrink: 0,
-                                }}
-                              >
-                                {loading ? '⏳' : '↑ Enviar'}
-                              </button>
+                            {doc && (
+                              <div style={{ fontSize: '11px', color: '#A09D97', marginTop: '2px' }}>
+                                {doc.nome} ·{' '}
+                                <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ color: COR }}>
+                                  ver arquivo
+                                </a>
+                              </div>
                             )}
                           </div>
-                        )
-                      })}
-                    </>
-                  )}
+                          {!uploaded && !justDone && (
+                            <button
+                              type="button"
+                              disabled={!!loading}
+                              onClick={() => triggerUpload(n, nomeTipo)}
+                              style={{
+                                padding: '5px 12px',
+                                background: loading ? '#A09D97' : COR,
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                fontSize: '12px',
+                                fontWeight: 500,
+                                cursor: loading ? 'not-allowed' : 'pointer',
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0,
+                              }}
+                            >
+                              {loading ? '⏳' : '↑ Enviar'}
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </>
 
                   {/* Documentos avulsos já enviados nesta fase */}
                   {avulsos.length > 0 && (

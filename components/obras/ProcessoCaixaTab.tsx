@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { CheckCircle2, Circle, ChevronRight, Upload, Download, Loader2, Copy, Link2 } from 'lucide-react'
+import { CheckCircle2, Circle, ChevronRight, Upload, Download, Loader2, Copy, Link2, Eye, EyeOff } from 'lucide-react'
 
 const FASES = [
     { n: 1, titulo: 'Análise de crédito', desc: 'Aprovação do crédito e definição do budget total do projeto.' },
@@ -21,7 +21,16 @@ const FASES = [
 
 interface CheckItem { id: string; fase_numero: number; item: string; concluido: boolean; ordem: number }
 interface Fase { id: string; fase_numero: number; status: string; notas: string | null }
-interface Documento { id: string; nome: string; url: string; enviado_por: string; fase_numero: number | null; visivel_cliente: boolean; created_at: string }
+interface Documento {
+    id: string
+    nome: string
+    url: string
+    enviado_por: string
+    fase_numero: number | null
+    visivel_cliente: boolean
+    visivel_correspondente: boolean
+    created_at: string
+}
 interface Acesso { id: string; tipo: string; token: string; nome: string | null; email: string | null; ativo: boolean }
 
 interface Props {
@@ -42,6 +51,7 @@ export default function ProcessoCaixaTab({ obraId, fases, checklist, documentos,
     const [uploading, setUploading] = useState(false)
     const [savingNota, setSavingNota] = useState(false)
     const [nota, setNota] = useState(fases.find(f => f.fase_numero === faseSelecionada)?.notas ?? '')
+    const [togglingId, setTogglingId] = useState<string | null>(null)
 
     const faseAtual = fases.find(f => f.fase_numero === faseSelecionada)
     const checklistFase = checklist.filter(c => c.fase_numero === faseSelecionada).sort((a, b) => a.ordem - b.ordem)
@@ -52,6 +62,11 @@ export default function ProcessoCaixaTab({ obraId, fases, checklist, documentos,
 
     const clienteAcesso = acessos.find(a => a.tipo === 'CLIENTE')
     const correspondAcesso = acessos.find(a => a.tipo === 'CORRESPONDENTE')
+
+    // Separar documentos por remetente
+    const docsConstrutor = docsFase.filter(d => d.enviado_por === 'CONSTRUTOR')
+    const docsCorrespondente = docsFase.filter(d => d.enviado_por === 'CORRESPONDENTE')
+    const docsCliente = docsFase.filter(d => d.enviado_por === 'CLIENTE')
 
     function getStatusFase(faseNum: number) {
         const f = fases.find(f => f.fase_numero === faseNum)
@@ -70,7 +85,6 @@ export default function ProcessoCaixaTab({ obraId, fases, checklist, documentos,
             .eq('id', item.id)
         if (error) { toast.error(error.message); return }
 
-        // Atualiza status da fase baseado no progresso
         const otherItems = checklistFase.filter(c => c.id !== item.id)
         const allDone = otherItems.every(c => c.concluido) && !item.concluido
         const anyDone = otherItems.some(c => c.concluido) || !item.concluido
@@ -104,11 +118,21 @@ export default function ProcessoCaixaTab({ obraId, fases, checklist, documentos,
             url: publicUrl,
             enviado_por: 'CONSTRUTOR',
             visivel_cliente: false,
+            visivel_correspondente: false,
         })
         setUploading(false)
         toast.success('Documento enviado!')
         router.refresh()
         if (fileRef.current) fileRef.current.value = ''
+    }
+
+    async function toggleVisibilidade(docId: string, campo: 'visivel_cliente' | 'visivel_correspondente', valor: boolean) {
+        setTogglingId(docId + campo)
+        const { error } = await supabase.from('ac_documentos').update({ [campo]: valor }).eq('id', docId)
+        setTogglingId(null)
+        if (error) { toast.error(error.message); return }
+        toast.success(valor ? 'Documento liberado' : 'Documento ocultado')
+        router.refresh()
     }
 
     return (
@@ -242,6 +266,7 @@ export default function ProcessoCaixaTab({ obraId, fases, checklist, documentos,
                                     </Button>
                                     <input ref={fileRef} type="file" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f) }} />
                                 </div>
+
                                 {docsFase.length === 0 ? (
                                     <div
                                         onClick={() => fileRef.current?.click()}
@@ -251,24 +276,44 @@ export default function ProcessoCaixaTab({ obraId, fases, checklist, documentos,
                                         <p className="text-sm text-muted-foreground">Nenhum documento. Clique para enviar.</p>
                                     </div>
                                 ) : (
-                                    <div className="space-y-2">
-                                        {docsFase.map((doc) => (
-                                            <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-muted/20">
-                                                <div className="text-lg">📄</div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium truncate">{doc.nome}</p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {doc.enviado_por === 'CONSTRUTOR' ? 'Enviado por você' : doc.enviado_por === 'CORRESPONDENTE' ? 'Enviado pelo correspondente' : 'Enviado pelo cliente'}
-                                                        {' · '}{new Date(doc.created_at).toLocaleDateString('pt-BR')}
-                                                    </p>
-                                                </div>
-                                                <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                                                    <Button size="icon" variant="ghost" className="h-8 w-8">
-                                                        <Download className="w-3.5 h-3.5" />
-                                                    </Button>
-                                                </a>
-                                            </div>
-                                        ))}
+                                    <div className="space-y-4">
+                                        {/* Documentos da construtora */}
+                                        {docsConstrutor.length > 0 && (
+                                            <DocSection
+                                                titulo="📤 Enviados pela construtora"
+                                                docs={docsConstrutor}
+                                                showClienteToggle
+                                                showCorrespToggle
+                                                togglingId={togglingId}
+                                                onToggle={toggleVisibilidade}
+                                            />
+                                        )}
+
+                                        {/* Documentos do correspondente (aguardando aprovação ou já aprovados) */}
+                                        {docsCorrespondente.length > 0 && (
+                                            <DocSection
+                                                titulo="📥 Enviados pelo correspondente"
+                                                subtitulo="Libere para o cliente ver marcando o ícone 👤"
+                                                docs={docsCorrespondente}
+                                                showClienteToggle
+                                                showCorrespToggle={false}
+                                                togglingId={togglingId}
+                                                onToggle={toggleVisibilidade}
+                                            />
+                                        )}
+
+                                        {/* Documentos do cliente (aguardando aprovação ou já aprovados) */}
+                                        {docsCliente.length > 0 && (
+                                            <DocSection
+                                                titulo="📥 Enviados pelo cliente"
+                                                subtitulo="Libere para o correspondente ver marcando o ícone 📋"
+                                                docs={docsCliente}
+                                                showClienteToggle={false}
+                                                showCorrespToggle
+                                                togglingId={togglingId}
+                                                onToggle={toggleVisibilidade}
+                                            />
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -292,6 +337,91 @@ export default function ProcessoCaixaTab({ obraId, fases, checklist, documentos,
                         </CardContent>
                     </Card>
                 </div>
+            </div>
+        </div>
+    )
+}
+
+// ── Sub-componente: seção de documentos com toggles de visibilidade ──────────
+interface DocSectionProps {
+    titulo: string
+    subtitulo?: string
+    docs: { id: string; nome: string; url: string; visivel_cliente: boolean; visivel_correspondente: boolean; created_at: string }[]
+    showClienteToggle: boolean
+    showCorrespToggle: boolean
+    togglingId: string | null
+    onToggle: (id: string, campo: 'visivel_cliente' | 'visivel_correspondente', valor: boolean) => void
+}
+
+function DocSection({ titulo, subtitulo, docs, showClienteToggle, showCorrespToggle, togglingId, onToggle }: DocSectionProps) {
+    return (
+        <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{titulo}</p>
+            {subtitulo && (
+                <p className="text-xs text-muted-foreground mb-2">{subtitulo}</p>
+            )}
+            <div className="space-y-2">
+                {docs.map((doc) => (
+                    <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-muted/20">
+                        <div className="text-lg">📄</div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{doc.nome}</p>
+                            <p className="text-xs text-muted-foreground">
+                                {new Date(doc.created_at).toLocaleDateString('pt-BR')}
+                            </p>
+                        </div>
+
+                        {/* Toggles de visibilidade */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            {showClienteToggle && (
+                                <button
+                                    title={doc.visivel_cliente ? 'Visível ao cliente — clique para ocultar' : 'Oculto do cliente — clique para liberar'}
+                                    disabled={togglingId === doc.id + 'visivel_cliente'}
+                                    onClick={() => onToggle(doc.id, 'visivel_cliente', !doc.visivel_cliente)}
+                                    className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+                                        doc.visivel_cliente
+                                            ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                    }`}
+                                >
+                                    {togglingId === doc.id + 'visivel_cliente'
+                                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                                        : doc.visivel_cliente
+                                            ? <Eye className="w-3 h-3" />
+                                            : <EyeOff className="w-3 h-3" />
+                                    }
+                                    <span>👤</span>
+                                </button>
+                            )}
+                            {showCorrespToggle && (
+                                <button
+                                    title={doc.visivel_correspondente ? 'Visível ao correspondente — clique para ocultar' : 'Oculto do correspondente — clique para liberar'}
+                                    disabled={togglingId === doc.id + 'visivel_correspondente'}
+                                    onClick={() => onToggle(doc.id, 'visivel_correspondente', !doc.visivel_correspondente)}
+                                    className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+                                        doc.visivel_correspondente
+                                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                    }`}
+                                >
+                                    {togglingId === doc.id + 'visivel_correspondente'
+                                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                                        : doc.visivel_correspondente
+                                            ? <Eye className="w-3 h-3" />
+                                            : <EyeOff className="w-3 h-3" />
+                                    }
+                                    <span>📋</span>
+                                </button>
+                            )}
+                        </div>
+
+                        <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                            <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0">
+                                <Download className="w-3.5 h-3.5" />
+                            </Button>
+                        </a>
+                    </div>
+                ))}
             </div>
         </div>
     )
