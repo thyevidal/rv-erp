@@ -8,7 +8,7 @@ const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin']
 
 export const metadata: Metadata = {
   title: 'Grev — o dono da obra',
-  description: 'Software de gestão de obras para construtoras.',
+  description: 'Gerencie suas obras com inteligência',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

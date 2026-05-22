@@ -20,7 +20,7 @@ export default async function FinanceiroOrgPage() {
   const orgId: string = profile?.organization_id ?? ''
 
   const planInfo = await getOrgPlan(orgId)
-  if (planInfo.isFree) {
+  if (!planInfo.features.financeiro_org) {
     return <PlanGate allowed={false} feature="Financeiro" />
   }
 

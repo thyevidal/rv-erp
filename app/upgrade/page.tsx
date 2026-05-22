@@ -28,7 +28,7 @@ export default function UpgradePage() {
         <div className="w-full max-w-lg">
           {/* Title */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-extrabold mb-2">Fazer upgrade para o Pro</h1>
+            <h1 className="text-3xl font-extrabold mb-2">Ativar o plano Pro</h1>
             <p className="text-gray-500">Desbloqueie todos os módulos por R$ 350/mês</p>
           </div>
 
@@ -64,7 +64,7 @@ export default function UpgradePage() {
               </div>
               <div className="ml-11 space-y-3">
                 <a
-                  href="https://wa.me/5584996958721"
+                  href="https://wa.me/5584996958721?text=Ol%C3%A1!%20Quero%20ativar%20o%20plano%20Pro%20do%20Grev."
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-semibold text-sm transition-colors hover:opacity-90"

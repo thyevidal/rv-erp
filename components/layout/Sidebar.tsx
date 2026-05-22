@@ -18,13 +18,13 @@ import { usePlan } from '@/hooks/usePlan'
 const COLLAPSED_KEY = 'sidebar-collapsed'
 
 const mainNavItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, exact: true, proOnly: false },
-  { href: '/dashboard/obras', label: 'Obras', icon: HardHat, exact: false, proOnly: false },
-  { href: '/dashboard/agenda', label: 'Agenda', icon: Calendar, exact: false, proOnly: true },
-  { href: '/dashboard/financeiro', label: 'Financeiro', icon: DollarSign, exact: false, proOnly: true },
-  { href: '/dashboard/estoque', label: 'Estoque', icon: Box, exact: false, proOnly: true },
-  { href: '/dashboard/insumos', label: 'Banco de Insumos', icon: Package, exact: false, proOnly: true },
-  { href: '/dashboard/configuracoes', label: 'Configurações', icon: Settings, exact: false, proOnly: false },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, exact: true, featureKey: null as string | null },
+  { href: '/dashboard/obras', label: 'Obras', icon: HardHat, exact: false, featureKey: null as string | null },
+  { href: '/dashboard/agenda', label: 'Agenda', icon: Calendar, exact: false, featureKey: 'agenda' as string | null },
+  { href: '/dashboard/financeiro', label: 'Financeiro', icon: DollarSign, exact: false, featureKey: 'financeiro_org' as string | null },
+  { href: '/dashboard/estoque', label: 'Estoque', icon: Box, exact: false, featureKey: 'estoque' as string | null },
+  { href: '/dashboard/insumos', label: 'Banco de Insumos', icon: Package, exact: false, featureKey: 'banco_insumos' as string | null },
+  { href: '/dashboard/configuracoes', label: 'Configurações', icon: Settings, exact: false, featureKey: null as string | null },
 ]
 
 export default function Sidebar({ className }: { className?: string }) {
@@ -74,7 +74,7 @@ export default function Sidebar({ className }: { className?: string }) {
   const allItems = [
     ...mainNavItems,
     ...(profile?.role === 'admin'
-      ? [{ href: '/dashboard/configuracoes/membros', label: 'Membros', icon: Users, exact: false, proOnly: false }]
+      ? [{ href: '/dashboard/configuracoes/membros', label: 'Membros', icon: Users, exact: false, featureKey: null as string | null }]
       : []),
   ]
 
@@ -126,7 +126,7 @@ export default function Sidebar({ className }: { className?: string }) {
             const active = isActive(item.href, item.exact)
             const Icon = item.icon
             const isObras = item.href === '/dashboard/obras'
-            const locked = item.proOnly && planStatus.isFree && !planStatus.loading
+            const locked = !planStatus.loading && item.featureKey !== null && !planStatus.features[item.featureKey as keyof typeof planStatus.features]
 
             return (
               <div key={item.href}>

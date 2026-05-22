@@ -2,185 +2,336 @@ import Link from 'next/link'
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-white text-gray-900">
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-gray-100 bg-white/90 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#3C3489' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <polyline points="9 22 9 12 15 12 15 22" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <span className="text-lg font-bold" style={{ color: '#3C3489' }}>Grev</span>
+    <div style={{ fontFamily: 'system-ui, sans-serif' }}>
+      {/* NAVBAR */}
+      <header style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+        backgroundColor: 'white',
+        borderBottom: '1px solid #e5e7eb',
+      }}>
+        <div style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          padding: '0 24px',
+          height: '64px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          {/* Logo */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              backgroundColor: '#3C3489',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontWeight: '700',
+              fontSize: '18px',
+              letterSpacing: '-1px',
+              flexShrink: 0,
+            }}>G</div>
+            <span style={{ color: '#3C3489', fontWeight: '700', fontSize: '18px' }}>Grev</span>
           </div>
-          <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-              Entrar
-            </Link>
-            <Link
-              href="/register"
-              className="text-sm font-medium text-white px-4 py-2 rounded-lg transition-colors"
-              style={{ backgroundColor: '#3C3489' }}
-            >
-              Criar conta grátis
-            </Link>
-          </div>
-        </div>
-      </nav>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 70% 0%, rgba(60,52,137,0.08) 0%, transparent 60%)' }} />
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-24 pb-20 text-center">
-          <div className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full mb-6 border" style={{ color: '#3C3489', backgroundColor: 'rgba(60,52,137,0.06)', borderColor: 'rgba(60,52,137,0.2)' }}>
-            <span>Novo</span>
-            <span className="text-gray-400">·</span>
-            <span>Plano gratuito disponível</span>
-          </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight mb-6 leading-tight">
-            Gerencie suas obras<br />
-            <span style={{ color: '#3C3489' }}>com inteligência</span>
-          </h1>
-          <p className="text-lg sm:text-xl text-gray-500 mb-10 max-w-2xl mx-auto">
-            Do orçamento à legalização — tudo em um só lugar.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              href="/register"
-              className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 rounded-xl text-white font-semibold text-base shadow-lg transition-all hover:opacity-90"
-              style={{ backgroundColor: '#3C3489', boxShadow: '0 4px 24px rgba(60,52,137,0.25)' }}
-            >
-              Criar conta grátis
-            </Link>
-            <Link
-              href="/login"
-              className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 rounded-xl font-semibold text-base border transition-colors hover:bg-gray-50"
-              style={{ color: '#3C3489', borderColor: '#3C3489' }}
-            >
+          {/* Nav actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <Link href="/login" style={{ color: '#6b7280', fontSize: '14px', textDecoration: 'none', fontWeight: '500' }}>
               Entrar
             </Link>
+            <Link href="/register" style={{
+              backgroundColor: '#3C3489',
+              color: 'white',
+              padding: '8px 18px',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              textDecoration: 'none',
+            }}>
+              Criar conta grátis
+            </Link>
           </div>
-          <p className="text-xs text-gray-400 mt-4">Sem cartão de crédito. Comece em segundos.</p>
         </div>
+      </header>
+
+      {/* HERO */}
+      <section style={{
+        backgroundColor: '#0F0E1A',
+        backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(60,52,137,0.4) 0%, transparent 70%)',
+        padding: '96px 24px 80px',
+        textAlign: 'center',
+      }}>
+        {/* Badge */}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '24px' }}>
+          <span style={{
+            backgroundColor: 'rgba(60,52,137,0.3)',
+            border: '1px solid rgba(60,52,137,0.5)',
+            color: '#a9a4e8',
+            fontSize: '13px',
+            fontWeight: '500',
+            padding: '4px 14px',
+            borderRadius: '999px',
+          }}>
+            Novo · Plano gratuito disponível
+          </span>
+        </div>
+
+        <h1 style={{
+          color: 'white',
+          fontSize: 'clamp(48px, 8vw, 88px)',
+          fontWeight: '800',
+          lineHeight: '1.05',
+          margin: '0 0 24px',
+          letterSpacing: '-2px',
+        }}>
+          O dono da obra
+        </h1>
+
+        <p style={{
+          color: '#9ca3af',
+          fontSize: 'clamp(16px, 2vw, 20px)',
+          maxWidth: '560px',
+          margin: '0 auto 40px',
+          lineHeight: '1.6',
+        }}>
+          Gerencie orçamentos, cronogramas, equipes e financeiro de todas as suas obras em um só lugar.
+        </p>
+
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Link href="/register" style={{
+            backgroundColor: 'white',
+            color: '#3C3489',
+            padding: '14px 28px',
+            borderRadius: '10px',
+            fontSize: '15px',
+            fontWeight: '700',
+            textDecoration: 'none',
+          }}>
+            Criar conta grátis
+          </Link>
+          <a href="#como-funciona" style={{
+            border: '1.5px solid rgba(255,255,255,0.3)',
+            color: 'white',
+            padding: '14px 28px',
+            borderRadius: '10px',
+            fontSize: '15px',
+            fontWeight: '600',
+            textDecoration: 'none',
+          }}>
+            Ver como funciona ↓
+          </a>
+        </div>
+
+        {/* Gradient fade */}
+        <div style={{
+          marginTop: '80px',
+          height: '1px',
+          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent)',
+        }} />
       </section>
 
-      {/* Como funciona */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold mb-3">Como funciona</h2>
-            <p className="text-gray-500">Três passos para transformar a gestão das suas obras.</p>
+      {/* COMO FUNCIONA */}
+      <section id="como-funciona" style={{ backgroundColor: 'white', padding: '80px 24px' }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+            <h2 style={{ fontSize: '32px', fontWeight: '700', color: '#111827', margin: '0 0 8px' }}>Como funciona</h2>
+            <p style={{ color: '#6b7280', fontSize: '16px', margin: 0 }}>Simples do início ao fim</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '24px' }}>
             {[
-              { n: '1', title: 'Crie sua obra', desc: 'Cadastre o projeto com endereço, status e responsáveis em menos de 1 minuto.' },
-              { n: '2', title: 'Orce e planeje', desc: 'Monte o orçamento com banco de insumos, calcule BDI e defina o cronograma.' },
-              { n: '3', title: 'Acompanhe em tempo real', desc: 'Monitore financeiro, estoque e agenda com dashboards atualizados ao vivo.' },
-            ].map(({ n, title, desc }) => (
-              <div key={n} className="flex flex-col items-center text-center">
-                <div
-                  className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold mb-5 shadow-md"
-                  style={{ backgroundColor: '#3C3489' }}
-                >
-                  {n}
+              { num: '1', title: 'Crie sua obra', desc: 'Cadastre e configure em minutos, sem burocracia.' },
+              { num: '2', title: 'Orce e planeje', desc: 'Monte orçamentos com BDI, cronograma e mapa de coleta.' },
+              { num: '3', title: 'Acompanhe em tempo real', desc: 'Financeiro, estoque e agenda centralizados.' },
+            ].map((step) => (
+              <div key={step.num} style={{
+                border: '1px solid #e5e7eb',
+                borderRadius: '16px',
+                padding: '32px 28px',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+              }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  backgroundColor: '#3C3489',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontWeight: '700',
+                  fontSize: '16px',
+                  marginBottom: '16px',
+                }}>
+                  {step.num}
                 </div>
-                <h3 className="text-lg font-semibold mb-2">{title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{desc}</p>
+                <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#111827', margin: '0 0 8px' }}>{step.title}</h3>
+                <p style={{ color: '#6b7280', fontSize: '15px', margin: 0, lineHeight: '1.6' }}>{step.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Funcionalidades */}
-      <section className="py-20 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold mb-3">Funcionalidades</h2>
-            <p className="text-gray-500">Tudo que uma construtora precisa, num só sistema.</p>
+      {/* FUNCIONALIDADES */}
+      <section style={{ backgroundColor: '#F8F7FF', padding: '80px 24px' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+            <h2 style={{ fontSize: '32px', fontWeight: '700', color: '#111827', margin: '0 0 8px' }}>Tudo que você precisa</h2>
+            <p style={{ color: '#6b7280', fontSize: '16px', margin: 0 }}>Módulos integrados para gestão completa da obra</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+            gap: '16px',
+          }}>
             {[
-              { emoji: '💰', title: 'Orçamento', desc: 'Monte orçamentos detalhados com banco de insumos e cálculo automático de BDI.' },
-              { emoji: '📅', title: 'Cronograma', desc: 'Planeje tarefas, defina responsáveis e acompanhe o progresso de cada etapa.' },
-              { emoji: '📦', title: 'Mapa de Coleta', desc: 'Compare fornecedores e gerencie cotações de materiais de forma eficiente.' },
-              { emoji: '🏗️', title: 'Banco de Insumos', desc: 'Catálogo mestre de materiais com histórico de preços e fornecedores.' },
-              { emoji: '📊', title: 'Financeiro', desc: 'Controle entradas e saídas, acompanhe saldo consolidado e saúde financeira.' },
-              { emoji: '🗄️', title: 'Estoque', desc: 'Gerencie o estoque de materiais com movimentações e alertas de reposição.' },
-              { emoji: '🗓️', title: 'Agenda', desc: 'Centralize reuniões, visitas e compromissos de todas as suas obras.' },
-              { emoji: '📋', title: 'Aquisição & Construção', desc: 'Do pedido de compra à execução — controle cada fase da construção.' },
-            ].map(({ emoji, title, desc }) => (
-              <div key={title} className="rounded-2xl border border-gray-100 p-6 hover:border-indigo-100 hover:shadow-sm transition-all">
-                <div className="text-3xl mb-3">{emoji}</div>
-                <h3 className="font-semibold mb-1.5">{title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{desc}</p>
+              { emoji: '📊', title: 'Orçamento com BDI', desc: 'Monte orçamentos detalhados com composição de BDI e curva ABC.' },
+              { emoji: '📅', title: 'Cronograma', desc: 'Planeje e acompanhe o progresso de cada etapa da obra.' },
+              { emoji: '🗺️', title: 'Mapa de coleta', desc: 'Organize cotações e coletas de materiais por região.' },
+              { emoji: '🏗️', title: 'Banco de insumos', desc: 'Base de dados completa de materiais e mão de obra.' },
+              { emoji: '💰', title: 'Financeiro', desc: 'Controle entradas, saídas e fluxo de caixa por obra.' },
+              { emoji: '📦', title: 'Estoque', desc: 'Gerencie materiais, alocações e devoluções.' },
+              { emoji: '🗓️', title: 'Agenda', desc: 'Centralize compromissos, visitas e reuniões.' },
+              { emoji: '🏦', title: 'Aquisição & Construção', desc: 'Processo Caixa FGTS do início ao fim.' },
+            ].map((feat) => (
+              <div key={feat.title} style={{
+                backgroundColor: 'white',
+                border: '1px solid #e5e7eb',
+                borderRadius: '12px',
+                padding: '24px 20px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+              }}>
+                <div style={{ fontSize: '28px', marginBottom: '12px' }}>{feat.emoji}</div>
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#111827', margin: '0 0 6px' }}>{feat.title}</h3>
+                <p style={{ color: '#6b7280', fontSize: '13px', margin: 0, lineHeight: '1.5' }}>{feat.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Planos */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold mb-3">Planos</h2>
-            <p className="text-gray-500">Comece grátis e faça upgrade quando precisar crescer.</p>
+      {/* PLANOS */}
+      <section style={{ backgroundColor: 'white', padding: '80px 24px' }}>
+        <div style={{ maxWidth: '960px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+            <h2 style={{ fontSize: '32px', fontWeight: '700', color: '#111827', margin: '0 0 8px' }}>Escolha seu plano</h2>
+            <p style={{ color: '#6b7280', fontSize: '16px', margin: 0 }}>Comece grátis e faça upgrade quando precisar</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {/* Gratuito */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-8 flex flex-col">
-              <div className="mb-6">
-                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">Gratuito</p>
-                <div className="flex items-end gap-1">
-                  <span className="text-4xl font-extrabold">R$ 0</span>
-                  <span className="text-gray-400 mb-1">/mês</span>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+            {/* Plano Gratuito */}
+            <div style={{
+              border: '1px solid #e5e7eb',
+              borderRadius: '20px',
+              padding: '36px 32px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '24px',
+            }}>
+              <div>
+                <span style={{
+                  backgroundColor: '#f3f4f6',
+                  color: '#6b7280',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  padding: '4px 10px',
+                  borderRadius: '999px',
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase' as const,
+                }}>Gratuito</span>
+                <div style={{ marginTop: '16px', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                  <span style={{ fontSize: '48px', fontWeight: '800', color: '#111827', lineHeight: '1' }}>R$ 0</span>
+                  <span style={{ color: '#9ca3af', fontSize: '15px' }}>/mês</span>
                 </div>
               </div>
-              <ul className="space-y-3 text-sm text-gray-600 flex-1 mb-8">
-                {['1 obra', 'Dashboard', 'Configurações'].map((f) => (
-                  <li key={f} className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                    {f}
+
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {['1 obra ativa', 'Dashboard e relatórios básicos', 'Configurações da conta', 'Suporte por e-mail'].map((item) => (
+                  <li key={item} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#374151' }}>
+                    <span style={{ color: '#3C3489', fontWeight: '700' }}>✓</span> {item}
                   </li>
                 ))}
               </ul>
-              <Link
-                href="/register"
-                className="block text-center py-3 rounded-xl font-semibold text-sm border transition-colors hover:bg-gray-50"
-                style={{ color: '#3C3489', borderColor: '#3C3489' }}
-              >
+
+              <Link href="/register" style={{
+                display: 'block',
+                textAlign: 'center',
+                border: '1.5px solid #3C3489',
+                color: '#3C3489',
+                padding: '12px',
+                borderRadius: '10px',
+                fontSize: '14px',
+                fontWeight: '600',
+                textDecoration: 'none',
+                marginTop: 'auto',
+              }}>
                 Começar grátis
               </Link>
             </div>
 
-            {/* Pro */}
-            <div className="rounded-2xl border-2 bg-white p-8 flex flex-col relative overflow-hidden" style={{ borderColor: '#3C3489' }}>
-              <div className="absolute top-4 right-4">
-                <span className="text-xs font-bold text-white px-2.5 py-1 rounded-full" style={{ backgroundColor: '#3C3489' }}>Popular</span>
-              </div>
-              <div className="mb-6">
-                <p className="text-sm font-semibold uppercase tracking-wide mb-1" style={{ color: '#3C3489' }}>Pro</p>
-                <div className="flex items-end gap-1">
-                  <span className="text-4xl font-extrabold">R$ 350</span>
-                  <span className="text-gray-400 mb-1">/mês</span>
+            {/* Plano Pro */}
+            <div style={{
+              border: '2px solid #3C3489',
+              borderRadius: '20px',
+              padding: '36px 32px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '24px',
+              boxShadow: '0 8px 32px rgba(60,52,137,0.15)',
+            }}>
+              <div>
+                <span style={{
+                  backgroundColor: '#3C3489',
+                  color: 'white',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  padding: '4px 10px',
+                  borderRadius: '999px',
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase' as const,
+                }}>Mais popular</span>
+                <p style={{ fontSize: '20px', fontWeight: '700', color: '#111827', margin: '12px 0 0' }}>Pro</p>
+                <div style={{ marginTop: '8px', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                  <span style={{ fontSize: '48px', fontWeight: '800', color: '#3C3489', lineHeight: '1' }}>R$ 350</span>
+                  <span style={{ color: '#9ca3af', fontSize: '15px' }}>/mês</span>
                 </div>
               </div>
-              <ul className="space-y-3 text-sm text-gray-600 flex-1 mb-8">
-                {['Obras ilimitadas', 'Todos os módulos', 'Financeiro', 'Estoque', 'Agenda', 'Banco de Insumos', 'Cronograma', 'Mapa de Coleta'].map((f) => (
-                  <li key={f} className="flex items-center gap-2">
-                    <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: '#3C3489' }}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                    {f}
+
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {[
+                  'Obras ilimitadas',
+                  'Todos os módulos',
+                  'Banco de insumos completo',
+                  'Agenda e financeiro',
+                  'Controle de estoque',
+                  'Aquisição & Construção (Caixa)',
+                  'Suporte prioritário',
+                ].map((item) => (
+                  <li key={item} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#374151' }}>
+                    <span style={{ color: '#3C3489', fontWeight: '700' }}>✓</span> {item}
                   </li>
                 ))}
               </ul>
-              <Link
-                href="/upgrade"
-                className="block text-center py-3 rounded-xl font-semibold text-sm text-white transition-colors hover:opacity-90"
-                style={{ backgroundColor: '#3C3489' }}
-              >
+
+              <Link href="/upgrade" style={{
+                display: 'block',
+                textAlign: 'center',
+                backgroundColor: '#3C3489',
+                color: 'white',
+                padding: '12px',
+                borderRadius: '10px',
+                fontSize: '14px',
+                fontWeight: '600',
+                textDecoration: 'none',
+                marginTop: 'auto',
+              }}>
                 Fazer upgrade
               </Link>
             </div>
@@ -188,33 +339,44 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* CTA Final */}
-      <section className="py-20" style={{ backgroundColor: '#3C3489' }}>
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">Comece agora, é grátis</h2>
-          <p className="text-indigo-200 mb-8">Sem cartão de crédito. Sem burocracia. Só você e suas obras.</p>
-          <Link
-            href="/register"
-            className="inline-flex items-center px-10 py-4 rounded-xl bg-white font-bold text-base transition-colors hover:bg-indigo-50"
-            style={{ color: '#3C3489' }}
-          >
-            Criar minha conta grátis
-          </Link>
-        </div>
+      {/* CTA FINAL */}
+      <section style={{ backgroundColor: '#3C3489', padding: '80px 24px', textAlign: 'center' }}>
+        <h2 style={{ color: 'white', fontSize: 'clamp(28px, 5vw, 42px)', fontWeight: '800', margin: '0 0 12px', letterSpacing: '-0.5px' }}>
+          Comece agora. É grátis.
+        </h2>
+        <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '16px', margin: '0 0 32px' }}>
+          Sem cartão de crédito. Cancele quando quiser.
+        </p>
+        <Link href="/register" style={{
+          display: 'inline-block',
+          backgroundColor: 'white',
+          color: '#3C3489',
+          padding: '14px 32px',
+          borderRadius: '10px',
+          fontSize: '15px',
+          fontWeight: '700',
+          textDecoration: 'none',
+        }}>
+          Criar conta grátis
+        </Link>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-100 bg-white py-8">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-400">
-          <span>© 2026 Grev</span>
-          <div className="flex items-center gap-6">
-            <Link href="/politica-de-privacidade" className="hover:text-gray-600 transition-colors">
-              Política de Privacidade
-            </Link>
-            <a href="mailto:contato@grev.com.br" className="hover:text-gray-600 transition-colors">
-              contato@grev.com.br
-            </a>
-          </div>
+      {/* FOOTER */}
+      <footer style={{
+        backgroundColor: '#0F0E1A',
+        padding: '32px 24px',
+        textAlign: 'center',
+        color: '#6b7280',
+        fontSize: '13px',
+      }}>
+        <p style={{ margin: '0 0 8px' }}>© 2026 Grev · Desenvolvido para construtoras brasileiras</p>
+        <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Link href="/politica-de-privacidade" style={{ color: '#6b7280', textDecoration: 'underline' }}>
+            Política de Privacidade
+          </Link>
+          <a href="mailto:contato@grev.com.br" style={{ color: '#6b7280', textDecoration: 'underline' }}>
+            contato@grev.com.br
+          </a>
         </div>
       </footer>
     </div>

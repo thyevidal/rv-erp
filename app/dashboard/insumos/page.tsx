@@ -17,7 +17,7 @@ export default async function InsumosPage() {
   const orgId: string = profile?.organization_id ?? ''
   const planInfo = await getOrgPlan(orgId)
 
-  if (planInfo.isFree) {
+  if (!planInfo.features.banco_insumos) {
     return <PlanGate allowed={false} feature="Banco de Insumos" />
   }
 

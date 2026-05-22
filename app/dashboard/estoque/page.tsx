@@ -17,7 +17,7 @@ export default async function EstoquePage() {
   const orgId: string = profile?.organization_id ?? ''
 
   const planInfo = await getOrgPlan(orgId)
-  if (planInfo.isFree) {
+  if (!planInfo.features.estoque) {
     return <PlanGate allowed={false} feature="Estoque" />
   }
 

@@ -49,7 +49,7 @@ export default async function AgendaPage() {
     ])
 
   return (
-    <PlanGate allowed={planInfo.isPro} feature="Agenda">
+    <PlanGate allowed={planInfo.features.agenda} feature="Agenda">
       <AgendaClient
         eventos={eventos ?? []}
         cronogramas={cronogramas ?? []}
