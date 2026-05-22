@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import AgendaClient from './AgendaClient'
+import { getOrgPlan } from '@/lib/plan'
+import PlanGate from '@/components/PlanGate'
 
 export default async function AgendaPage() {
   const supabase = await createClient()
@@ -13,6 +15,8 @@ export default async function AgendaPage() {
     .single()
 
   const orgId: string = profile?.organization_id ?? ''
+
+  const planInfo = await getOrgPlan(orgId)
 
   // Buscar obras primeiro para evitar .in([]) com array vazio
   const { data: obras } = await supabase
@@ -45,14 +49,16 @@ export default async function AgendaPage() {
     ])
 
   return (
-    <AgendaClient
-      eventos={eventos ?? []}
-      cronogramas={cronogramas ?? []}
-      obras={obras ?? []}
-      membros={membros ?? []}
-      userId={user.id}
-      orgId={orgId}
-      isAdmin={profile?.role === 'admin'}
-    />
+    <PlanGate allowed={planInfo.isPro} feature="Agenda">
+      <AgendaClient
+        eventos={eventos ?? []}
+        cronogramas={cronogramas ?? []}
+        obras={obras ?? []}
+        membros={membros ?? []}
+        userId={user.id}
+        orgId={orgId}
+        isAdmin={profile?.role === 'admin'}
+      />
+    </PlanGate>
   )
 }

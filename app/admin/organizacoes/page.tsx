@@ -1,13 +1,15 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { formatCurrency } from '@/lib/utils'
+import OrgPlanChanger from './OrgPlanChanger'
 
 export default async function AdminOrganizacoesPage() {
   const admin = createAdminClient()
 
-  const [{ data: orgs }, { data: subs }, { data: obras }] = await Promise.all([
+  const [{ data: orgs }, { data: subs }, { data: obras }, { data: plans }] = await Promise.all([
     admin.from('organizations').select('*').order('created_at', { ascending: false }),
     admin.from('subscriptions').select('*, plans(nome, max_obras, preco_mensal)'),
     admin.from('obras').select('organization_id').is('deleted_at', null),
+    admin.from('plans').select('id, nome').eq('ativo', true).order('preco_mensal'),
   ])
 
   const subMap = new Map((subs ?? []).map((s) => [s.organization_id, s]))
@@ -15,6 +17,8 @@ export default async function AdminOrganizacoesPage() {
     acc[o.organization_id] = (acc[o.organization_id] ?? 0) + 1
     return acc
   }, {})
+
+  const plansList = (plans ?? []) as { id: string; nome: string }[]
 
   return (
     <div className="space-y-6">
@@ -33,6 +37,7 @@ export default async function AdminOrganizacoesPage() {
               <th className="px-4 py-3 font-medium text-right">Obras</th>
               <th className="px-4 py-3 font-medium text-right">Limite</th>
               <th className="px-4 py-3 font-medium">Desde</th>
+              <th className="px-4 py-3 font-medium">Ação</th>
             </tr>
           </thead>
           <tbody>
@@ -68,6 +73,13 @@ export default async function AdminOrganizacoesPage() {
                   </td>
                   <td className="px-4 py-3 text-muted-foreground text-xs">
                     {new Date(org.created_at).toLocaleDateString('pt-BR')}
+                  </td>
+                  <td className="px-4 py-3">
+                    <OrgPlanChanger
+                      orgId={org.id}
+                      currentPlanId={sub?.plan_id ?? null}
+                      plans={plansList}
+                    />
                   </td>
                 </tr>
               )

@@ -7,23 +7,24 @@ import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, HardHat, Package, Settings, LogOut, ChevronRight,
   Building2, Trash2, Users, PanelLeftClose, PanelLeftOpen, Calendar,
-  DollarSign, Box,
+  DollarSign, Box, Lock,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useEffect, useState } from 'react'
 import type { Profile } from '@/types'
+import { usePlan } from '@/hooks/usePlan'
 
 const COLLAPSED_KEY = 'sidebar-collapsed'
 
 const mainNavItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { href: '/dashboard/obras', label: 'Obras', icon: HardHat, exact: false },
-  { href: '/dashboard/agenda', label: 'Agenda', icon: Calendar, exact: false },
-  { href: '/dashboard/financeiro', label: 'Financeiro', icon: DollarSign, exact: false },
-  { href: '/dashboard/estoque', label: 'Estoque', icon: Box, exact: false },
-  { href: '/dashboard/insumos', label: 'Banco de Insumos', icon: Package, exact: false },
-  { href: '/dashboard/configuracoes', label: 'Configurações', icon: Settings, exact: false },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, exact: true, proOnly: false },
+  { href: '/dashboard/obras', label: 'Obras', icon: HardHat, exact: false, proOnly: false },
+  { href: '/dashboard/agenda', label: 'Agenda', icon: Calendar, exact: false, proOnly: true },
+  { href: '/dashboard/financeiro', label: 'Financeiro', icon: DollarSign, exact: false, proOnly: true },
+  { href: '/dashboard/estoque', label: 'Estoque', icon: Box, exact: false, proOnly: true },
+  { href: '/dashboard/insumos', label: 'Banco de Insumos', icon: Package, exact: false, proOnly: true },
+  { href: '/dashboard/configuracoes', label: 'Configurações', icon: Settings, exact: false, proOnly: false },
 ]
 
 export default function Sidebar({ className }: { className?: string }) {
@@ -32,6 +33,7 @@ export default function Sidebar({ className }: { className?: string }) {
   const supabase = createClient()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [collapsed, setCollapsed] = useState(false)
+  const planStatus = usePlan()
 
   useEffect(() => {
     const saved = localStorage.getItem(COLLAPSED_KEY)
@@ -72,7 +74,7 @@ export default function Sidebar({ className }: { className?: string }) {
   const allItems = [
     ...mainNavItems,
     ...(profile?.role === 'admin'
-      ? [{ href: '/dashboard/configuracoes/membros', label: 'Membros', icon: Users, exact: false }]
+      ? [{ href: '/dashboard/configuracoes/membros', label: 'Membros', icon: Users, exact: false, proOnly: false }]
       : []),
   ]
 
@@ -97,8 +99,8 @@ export default function Sidebar({ className }: { className?: string }) {
           </div>
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-sidebar-foreground leading-tight truncate">Rezende & Vidal</p>
-              <p className="text-xs text-sidebar-foreground/40 leading-tight">ERP Construtora</p>
+              <p className="text-sm font-bold text-sidebar-foreground leading-tight truncate">Grev</p>
+              <p className="text-xs text-sidebar-foreground/40 leading-tight">o dono da obra</p>
             </div>
           )}
           <button
@@ -124,6 +126,7 @@ export default function Sidebar({ className }: { className?: string }) {
             const active = isActive(item.href, item.exact)
             const Icon = item.icon
             const isObras = item.href === '/dashboard/obras'
+            const locked = item.proOnly && planStatus.isFree && !planStatus.loading
 
             return (
               <div key={item.href}>
@@ -133,6 +136,7 @@ export default function Sidebar({ className }: { className?: string }) {
                   icon={Icon}
                   active={active || (isObras && isObrasSection)}
                   collapsed={collapsed}
+                  locked={locked}
                 />
 
                 {/* Sub-item Lixeira sob Obras */}
@@ -194,12 +198,14 @@ function NavItem({
   icon: Icon,
   active,
   collapsed,
+  locked,
 }: {
   href: string
   label: string
   icon: React.ElementType
   active: boolean
   collapsed: boolean
+  locked?: boolean
 }) {
   const content = (
     <Link href={href}>
@@ -209,14 +215,18 @@ function NavItem({
           collapsed ? 'justify-center p-2.5' : 'px-3 py-2.5',
           active
             ? 'bg-primary text-primary-foreground shadow-sm'
-            : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent',
+            : locked
+              ? 'text-sidebar-foreground/40 hover:bg-sidebar-accent'
+              : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent',
         )}
       >
         <Icon className="w-4 h-4 shrink-0" />
         {!collapsed && (
           <>
             <span className="flex-1">{label}</span>
-            {active && <ChevronRight className="w-3 h-3 opacity-60" />}
+            {locked
+              ? <Lock className="w-3 h-3 opacity-50" />
+              : active && <ChevronRight className="w-3 h-3 opacity-60" />}
           </>
         )}
       </div>
@@ -227,7 +237,9 @@ function NavItem({
     return (
       <Tooltip>
         <TooltipTrigger asChild>{content}</TooltipTrigger>
-        <TooltipContent side="right">{label}</TooltipContent>
+        <TooltipContent side="right">
+          {locked ? `${label} — Disponível no plano Pro` : label}
+        </TooltipContent>
       </Tooltip>
     )
   }

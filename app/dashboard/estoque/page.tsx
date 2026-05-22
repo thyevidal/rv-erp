@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import EstoqueClient from './EstoqueClient'
+import { getOrgPlan } from '@/lib/plan'
+import PlanGate from '@/components/PlanGate'
 
 export default async function EstoquePage() {
   const supabase = await createClient()
@@ -13,6 +15,11 @@ export default async function EstoquePage() {
     .single()
 
   const orgId: string = profile?.organization_id ?? ''
+
+  const planInfo = await getOrgPlan(orgId)
+  if (planInfo.isFree) {
+    return <PlanGate allowed={false} feature="Estoque" />
+  }
 
   const [{ data: itens }, { data: movimentacoes }, { data: obras }] = await Promise.all([
     supabase

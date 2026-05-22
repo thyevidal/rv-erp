@@ -3,6 +3,8 @@ import { formatCurrency } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { TrendingUp, TrendingDown, DollarSign, Target } from 'lucide-react'
 import FinanceiroOrgClient from './FinanceiroOrgClient'
+import { getOrgPlan } from '@/lib/plan'
+import PlanGate from '@/components/PlanGate'
 
 export default async function FinanceiroOrgPage() {
   const supabase = await createClient()
@@ -16,6 +18,11 @@ export default async function FinanceiroOrgPage() {
     .single()
 
   const orgId: string = profile?.organization_id ?? ''
+
+  const planInfo = await getOrgPlan(orgId)
+  if (planInfo.isFree) {
+    return <PlanGate allowed={false} feature="Financeiro" />
+  }
 
   // Buscar obras ativas da org
   const { data: obras } = await supabase

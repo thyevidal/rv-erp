@@ -7,8 +7,8 @@ const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Rezende & Vidal — ERP Construtora',
-  description: 'Sistema interno de gestão de obras, orçamentos e canteiro para a Construtora Rezende & Vidal.',
+  title: 'Grev — o dono da obra',
+  description: 'Software de gestão de obras para construtoras.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

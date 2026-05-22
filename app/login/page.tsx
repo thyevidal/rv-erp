@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,8 +45,8 @@ export default function LoginPage() {
           <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary shadow-lg shadow-primary/30 mb-4">
             <HardHat className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-sidebar-foreground tracking-tight">Rezende & Vidal</h1>
-          <p className="text-sm text-sidebar-foreground/50 mt-1">Sistema de Gestão de Obras</p>
+          <h1 className="text-2xl font-bold text-sidebar-foreground tracking-tight">Grev</h1>
+          <p className="text-sm text-sidebar-foreground/50 mt-1">o dono da obra</p>
         </div>
 
         <Card className="border-sidebar-border bg-sidebar-accent/30 backdrop-blur-sm shadow-2xl">
@@ -97,8 +98,15 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-sidebar-foreground/30 mt-6">
-          © {new Date().getFullYear()} Rezende & Vidal Engenharia
+        <p className="text-center text-sm text-sidebar-foreground/50 mt-4">
+          Não tem conta?{' '}
+          <Link href="/register" className="text-primary hover:underline font-medium">
+            Criar conta grátis
+          </Link>
+        </p>
+
+        <p className="text-center text-xs text-sidebar-foreground/30 mt-4">
+          © {new Date().getFullYear()} Grev
         </p>
       </div>
     </div>
