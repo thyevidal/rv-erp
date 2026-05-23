@@ -2,6 +2,45 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
+const CHECKLIST_AC: { fase: number; item: string; ordem: number }[] = [
+  // Fase 1
+  { fase: 1, item: 'Encaminhar documentação do cliente ao correspondente', ordem: 1 },
+  { fase: 1, item: 'Obter simulação e aprovação de crédito', ordem: 2 },
+  { fase: 1, item: 'Definir budget total (terreno + construção + taxas)', ordem: 3 },
+  // Fase 2
+  { fase: 2, item: 'Obter Certidão de Ônus Reais do terreno', ordem: 1 },
+  { fase: 2, item: 'Obter Certidão Negativa de Débitos Municipais', ordem: 2 },
+  { fase: 2, item: 'Confirmar desmembramento e matrícula do lote', ordem: 3 },
+  { fase: 2, item: 'Desenvolver projeto arquitetônico dentro do budget', ordem: 4 },
+  { fase: 2, item: 'Contratar projetos complementares (estrutural, elétrico, hidro)', ordem: 5 },
+  { fase: 2, item: 'Obter ARTs dos engenheiros responsáveis', ordem: 6 },
+  // Fase 3
+  { fase: 3, item: 'Submeter projeto arquitetônico na prefeitura', ordem: 1 },
+  { fase: 3, item: 'Obter Alvará de Construção', ordem: 2 },
+  { fase: 3, item: 'Preencher PCI — Orçamento resumo por etapas', ordem: 3 },
+  { fase: 3, item: 'Preencher PCI — Cronograma físico-financeiro', ordem: 4 },
+  { fase: 3, item: 'Enviar PCI completa ao correspondente', ordem: 5 },
+  { fase: 3, item: 'Aguardar validação da PCI pela Caixa', ordem: 6 },
+  // Fase 4
+  { fase: 4, item: 'Cliente pagar taxa de engenharia do banco', ordem: 1 },
+  { fase: 4, item: 'Vistoria inicial do engenheiro credenciado (terreno vazio)', ordem: 2 },
+  { fase: 4, item: 'Assinatura do contrato na agência (cliente + construtor + vendedor)', ordem: 3 },
+  { fase: 4, item: 'Registro do contrato em cartório (CRI)', ordem: 4 },
+  { fase: 4, item: 'Confirmação do pagamento do terreno ao vendedor', ordem: 5 },
+  // Fase 5
+  { fase: 5, item: 'Iniciar obra com recursos próprios / adiantamento', ordem: 1 },
+  { fase: 5, item: 'Solicitar 1ª medição ao banco', ordem: 2 },
+  { fase: 5, item: 'Acompanhar vistoria do fiscal do banco', ordem: 3 },
+  { fase: 5, item: 'Confirmar liberação da 1ª parcela', ordem: 4 },
+  { fase: 5, item: 'Repetir ciclo de medições mensais até conclusão', ordem: 5 },
+  // Fase 6
+  { fase: 6, item: 'Acionar prefeitura para vistoria e emissão do Habite-se', ordem: 1 },
+  { fase: 6, item: 'Regularizar INSS da obra (CNO/SERO) e obter CND', ordem: 2 },
+  { fase: 6, item: 'Averbar a construção no Cartório de Registro de Imóveis', ordem: 3 },
+  { fase: 6, item: 'Entregar matrícula atualizada ao banco', ordem: 4 },
+  { fase: 6, item: 'Confirmar liberação da última parcela retida', ordem: 5 },
+]
+
 export async function POST(request: NextRequest) {
   try {
     // Valida sessão do usuário
@@ -65,16 +104,9 @@ export async function POST(request: NextRequest) {
         [1, 2, 3, 4, 5, 6].map(n => ({ obra_id: obra.id, fase_numero: n, status: n === 1 ? 'EM_ANDAMENTO' : 'PENDENTE' }))
       )
 
-      const { data: checklistTemplate } = await supabase
-        .from('ac_checklist_template')
-        .select('fase, item, ordem')
-        .order('fase').order('ordem')
-
-      if (checklistTemplate && checklistTemplate.length > 0) {
-        await admin.from('ac_checklist').insert(
-          checklistTemplate.map((c: any) => ({ obra_id: obra.id, fase_numero: c.fase, item: c.item, ordem: c.ordem, concluido: false }))
-        )
-      }
+      await admin.from('ac_checklist').insert(
+        CHECKLIST_AC.map((c) => ({ obra_id: obra.id, fase_numero: c.fase, item: c.item, ordem: c.ordem, concluido: false }))
+      )
 
       // Acessos para cliente e correspondente
       const acessos: any[] = []

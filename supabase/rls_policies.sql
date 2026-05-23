@@ -127,25 +127,25 @@ CREATE POLICY "bdi_update_org" ON bdi_config
   FOR UPDATE USING (obra_id IN (SELECT id FROM obras WHERE organization_id = get_my_org_id()));
 
 -- ============================================================
--- CRONOGRAMA_ETAPAS
+-- CRONOGRAMA
 -- ============================================================
-ALTER TABLE cronograma_etapas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cronograma ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "cronograma_select_org" ON cronograma_etapas;
-DROP POLICY IF EXISTS "cronograma_insert_org" ON cronograma_etapas;
-DROP POLICY IF EXISTS "cronograma_update_org" ON cronograma_etapas;
-DROP POLICY IF EXISTS "cronograma_delete_org" ON cronograma_etapas;
+DROP POLICY IF EXISTS "cronograma_select_org" ON cronograma;
+DROP POLICY IF EXISTS "cronograma_insert_org" ON cronograma;
+DROP POLICY IF EXISTS "cronograma_update_org" ON cronograma;
+DROP POLICY IF EXISTS "cronograma_delete_org" ON cronograma;
 
-CREATE POLICY "cronograma_select_org" ON cronograma_etapas
+CREATE POLICY "cronograma_select_org" ON cronograma
   FOR SELECT USING (obra_id IN (SELECT id FROM obras WHERE organization_id = get_my_org_id()));
 
-CREATE POLICY "cronograma_insert_org" ON cronograma_etapas
+CREATE POLICY "cronograma_insert_org" ON cronograma
   FOR INSERT WITH CHECK (obra_id IN (SELECT id FROM obras WHERE organization_id = get_my_org_id()));
 
-CREATE POLICY "cronograma_update_org" ON cronograma_etapas
+CREATE POLICY "cronograma_update_org" ON cronograma
   FOR UPDATE USING (obra_id IN (SELECT id FROM obras WHERE organization_id = get_my_org_id()));
 
-CREATE POLICY "cronograma_delete_org" ON cronograma_etapas
+CREATE POLICY "cronograma_delete_org" ON cronograma
   FOR DELETE USING (obra_id IN (SELECT id FROM obras WHERE organization_id = get_my_org_id()));
 
 -- ============================================================
@@ -229,26 +229,62 @@ CREATE POLICY "agenda_delete_org" ON agenda_eventos
   FOR DELETE USING (organization_id = get_my_org_id());
 
 -- ============================================================
--- INSUMOS (banco de insumos — leitura para todos, escrita por org)
+-- INSUMOS_BASE (banco de insumos — leitura para todos, escrita por org)
 -- ============================================================
-ALTER TABLE insumos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE insumos_base ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "insumos_select_all" ON insumos;
-DROP POLICY IF EXISTS "insumos_insert_org" ON insumos;
-DROP POLICY IF EXISTS "insumos_update_org" ON insumos;
-DROP POLICY IF EXISTS "insumos_delete_org" ON insumos;
+DROP POLICY IF EXISTS "insumos_select_all" ON insumos_base;
+DROP POLICY IF EXISTS "insumos_insert_org" ON insumos_base;
+DROP POLICY IF EXISTS "insumos_update_org" ON insumos_base;
+DROP POLICY IF EXISTS "insumos_delete_org" ON insumos_base;
 
-CREATE POLICY "insumos_select_all" ON insumos
+CREATE POLICY "insumos_select_all" ON insumos_base
   FOR SELECT USING (organization_id IS NULL OR organization_id = get_my_org_id());
 
-CREATE POLICY "insumos_insert_org" ON insumos
+CREATE POLICY "insumos_insert_org" ON insumos_base
   FOR INSERT WITH CHECK (organization_id = get_my_org_id());
 
-CREATE POLICY "insumos_update_org" ON insumos
+CREATE POLICY "insumos_update_org" ON insumos_base
   FOR UPDATE USING (organization_id = get_my_org_id());
 
-CREATE POLICY "insumos_delete_org" ON insumos
+CREATE POLICY "insumos_delete_org" ON insumos_base
   FOR DELETE USING (organization_id = get_my_org_id());
+
+-- ============================================================
+-- MAPA_COLETA (vinculada à obra)
+-- ============================================================
+ALTER TABLE mapa_coleta ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "mapa_coleta_org" ON mapa_coleta;
+CREATE POLICY "mapa_coleta_org" ON mapa_coleta
+  FOR ALL USING (obra_id IN (SELECT id FROM obras WHERE organization_id = get_my_org_id()));
+
+-- ============================================================
+-- ESTOQUE_LOGS (vinculada à obra)
+-- ============================================================
+ALTER TABLE estoque_logs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "estoque_logs_org" ON estoque_logs;
+CREATE POLICY "estoque_logs_org" ON estoque_logs
+  FOR ALL USING (obra_id IN (SELECT id FROM obras WHERE organization_id = get_my_org_id()));
+
+-- ============================================================
+-- INSUMO_FORNECEDORES (leitura para todos autenticados, escrita livre)
+-- ============================================================
+ALTER TABLE insumo_fornecedores ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "insumo_fornecedores_select" ON insumo_fornecedores;
+DROP POLICY IF EXISTS "insumo_fornecedores_insert" ON insumo_fornecedores;
+DROP POLICY IF EXISTS "insumo_fornecedores_delete" ON insumo_fornecedores;
+
+CREATE POLICY "insumo_fornecedores_select" ON insumo_fornecedores
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "insumo_fornecedores_insert" ON insumo_fornecedores
+  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+CREATE POLICY "insumo_fornecedores_delete" ON insumo_fornecedores
+  FOR DELETE USING (auth.uid() IS NOT NULL);
 
 -- ============================================================
 -- AC_* (Aquisição e Construção) — vinculadas à obra
