@@ -46,7 +46,7 @@ export async function GET(
     const [{ data: obra }, { data: bdi }, { data: itens }, { data: cronogramas }] = await Promise.all([
         admin.from('obras').select('*').eq('id', id).eq('organization_id', profile.organization_id).single(),
         admin.from('bdi_config').select('bdi_total, impostos, margem_lucro, seguros, custos_indiretos').eq('obra_id', id).maybeSingle(),
-        admin.from('orcamento_itens_view').select('id, etapa, subetapa, descricao, tipo, quantidade, custo_unitario_aplicado, total_custo, total_venda').eq('obra_id', id).order('etapa').order('created_at'),
+        admin.from('orcamento_itens').select('id, etapa, subetapa, descricao, tipo, unidade, quantidade, custo_unitario_aplicado').eq('obra_id', id).order('etapa').order('created_at'),
         admin.from('cronograma').select('tarefa, data_prevista_inicio, data_prevista_fim').eq('obra_id', id).order('data_prevista_inicio'),
     ])
 

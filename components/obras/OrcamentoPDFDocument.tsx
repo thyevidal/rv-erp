@@ -29,10 +29,9 @@ interface OrcamentoItem {
   subetapa?: string
   descricao: string
   tipo: 'MATERIAL' | 'MAO_DE_OBRA'
+  unidade: string
   quantidade: number
   custo_unitario_aplicado: number
-  total_custo: number
-  total_venda: number  // preço de venda já com BDI embutido
 }
 
 interface Cronograma {
@@ -265,13 +264,20 @@ export function OrcamentoPDFDocument({ obra, bdi, itens, cronogramas, branding }
     ? `${dataInicio} até ${dataFim}`
     : obra.prazo_dias ? `${obra.prazo_dias} dias` : null
 
-  // Composição por tipo — preço de venda (total_venda já inclui BDI)
+  // Preço de venda = custo / (1 - BDI%) — mesma fórmula da orcamento_itens_view
+  // Calculado aqui para garantir consistência independente da view estar acessível
+  const bdiPct = bdi?.bdi_total ?? 0
+  const toVenda = (custo: number) =>
+    bdiPct > 0 && bdiPct < 100
+      ? Math.round((custo / (1 - bdiPct / 100)) * 100) / 100
+      : custo
+
   const totalMaoDeObra = itens
     .filter(i => i.tipo === 'MAO_DE_OBRA')
-    .reduce((s, i) => s + (i.total_venda || 0), 0)
+    .reduce((s, i) => s + toVenda((i.quantidade ?? 0) * (i.custo_unitario_aplicado ?? 0)), 0)
   const totalMaterial = itens
     .filter(i => i.tipo === 'MATERIAL')
-    .reduce((s, i) => s + (i.total_venda || 0), 0)
+    .reduce((s, i) => s + toVenda((i.quantidade ?? 0) * (i.custo_unitario_aplicado ?? 0)), 0)
   const totalGeral = totalMaoDeObra + totalMaterial
 
   // Composição para a tabela (apenas linhas com valor > 0)
