@@ -26,11 +26,13 @@ interface BdiConfig {
 interface OrcamentoItem {
   id: string
   etapa: string
+  subetapa?: string
   descricao: string
-  unidade: string
+  tipo: 'MATERIAL' | 'MAO_DE_OBRA'
   quantidade: number
-  valor_unitario: number
-  valor_total: number
+  custo_unitario_aplicado: number
+  total_custo: number
+  total_venda: number  // preço de venda já com BDI embutido
 }
 
 interface Cronograma {
@@ -263,18 +265,20 @@ export function OrcamentoPDFDocument({ obra, bdi, itens, cronogramas, branding }
     ? `${dataInicio} até ${dataFim}`
     : obra.prazo_dias ? `${obra.prazo_dias} dias` : null
 
-  // Totais
-  const totalBruto = itens.reduce((s, i) => s + (i.valor_total || 0), 0)
-  const bdiPct = bdi?.bdi_total ?? 0
-  const valorBdi = totalBruto * (bdiPct / 100)
-  const totalGeral = totalBruto + valorBdi
+  // Composição por tipo — preço de venda (total_venda já inclui BDI)
+  const totalMaoDeObra = itens
+    .filter(i => i.tipo === 'MAO_DE_OBRA')
+    .reduce((s, i) => s + (i.total_venda || 0), 0)
+  const totalMaterial = itens
+    .filter(i => i.tipo === 'MATERIAL')
+    .reduce((s, i) => s + (i.total_venda || 0), 0)
+  const totalGeral = totalMaoDeObra + totalMaterial
 
-  // Etapas agrupadas para a tabela de composição
-  const etapas = Array.from(new Set(itens.map(i => i.etapa)))
-  const subtotalPorEtapa = etapas.map(etapa => ({
-    etapa,
-    valor: itens.filter(i => i.etapa === etapa).reduce((s, i) => s + (i.valor_total || 0), 0),
-  }))
+  // Composição para a tabela (apenas linhas com valor > 0)
+  const composicao = [
+    { label: 'Mão de Obra e Serviços', desc: 'Execução dos serviços e empreitadas', valor: totalMaoDeObra },
+    { label: 'Materiais e Insumos', desc: 'Fornecimento de materiais e insumos', valor: totalMaterial },
+  ].filter(c => c.valor > 0)
 
   // Serviços (do cronograma) divididos em 2 colunas
   const tarefas = cronogramas.map(c => c.tarefa).filter(Boolean)
@@ -424,32 +428,19 @@ export function OrcamentoPDFDocument({ obra, bdi, itens, cronogramas, branding }
             <Text style={S.tableHeadText}>{spaced('VALOR')}</Text>
           </View>
 
-          {/* Linhas por etapa */}
-          {subtotalPorEtapa.map(({ etapa, valor }, idx) => (
+          {/* Linhas por tipo (Mão de Obra / Materiais) */}
+          {composicao.map(({ label, desc, valor }, idx) => (
             <View key={idx} style={S.tableRow}>
               <View style={S.tableRowLeft}>
                 <View style={[S.tableRowDot, { backgroundColor: cor }]} />
                 <View>
-                  <Text style={S.tableRowLabel}>{etapa}</Text>
+                  <Text style={S.tableRowLabel}>{label}</Text>
+                  <Text style={S.tableRowDesc}>{desc}</Text>
                 </View>
               </View>
               <Text style={S.tableRowValue}>{fmt(valor)}</Text>
             </View>
           ))}
-
-          {/* Linha BDI se houver */}
-          {bdiPct > 0 && (
-            <View style={S.tableRow}>
-              <View style={S.tableRowLeft}>
-                <View style={[S.tableRowDot, { backgroundColor: '#9ca3af' }]} />
-                <View>
-                  <Text style={S.tableRowLabel}>BDI — Benefícios e Despesas Indiretas</Text>
-                  <Text style={S.tableRowDesc}>{`${bdiPct}% sobre o custo direto`}</Text>
-                </View>
-              </View>
-              <Text style={[S.tableRowValue, { color: '#6b7280' }]}>{fmt(valorBdi)}</Text>
-            </View>
-          )}
 
           {/* Total geral */}
           <View style={[S.tableTotalRow, { backgroundColor: cor, marginTop: 2 }]}>
