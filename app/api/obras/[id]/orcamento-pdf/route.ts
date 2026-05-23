@@ -1,8 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderToBuffer, Font } from '@react-pdf/renderer'
 import { OrcamentoPDFDocument } from '@/components/obras/OrcamentoPDFDocument'
+
+// Garante registro da fonte ANTES de qualquer render — necessário no serverless
+// pois cada invocação pode ter contexto de módulo isolado (Turbopack/edge)
+function ensureFonts() {
+    Font.register({
+        family: 'Helvetica',
+        fonts: [
+            { src: 'Helvetica' },
+            { src: 'Helvetica-Bold', fontWeight: 'bold' },
+            { src: 'Helvetica-Oblique', fontStyle: 'italic' },
+            { src: 'Helvetica-BoldOblique', fontWeight: 'bold', fontStyle: 'italic' },
+        ],
+    })
+}
 
 export async function GET(
     request: NextRequest,
@@ -78,6 +92,8 @@ export async function GET(
             // Falhou ao baixar logo — segue sem
         }
     }
+
+    ensureFonts()
 
     const rawBuffer = await renderToBuffer(
         OrcamentoPDFDocument({
