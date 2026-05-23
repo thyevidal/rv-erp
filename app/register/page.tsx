@@ -74,36 +74,14 @@ export default function RegisterPage() {
       const userId = authData.user?.id
       if (!userId) { setErro('Erro ao criar usuário.'); return }
 
-      // 2. Create organization
-      const { data: org, error: orgError } = await supabase
-        .from('organizations')
-        .insert({ name: orgName })
-        .select('id')
-        .single()
-      if (orgError) { setErro('Erro ao criar organização: ' + orgError.message); return }
-
-      // 3. Update profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ name: nome, organization_id: org.id })
-        .eq('id', userId)
-      if (profileError) { setErro('Erro ao atualizar perfil: ' + profileError.message); return }
-
-      // 4. Find free plan and create subscription
-      const { data: freePlan } = await supabase
-        .from('plans')
-        .select('id')
-        .eq('preco_mensal', 0)
-        .eq('ativo', true)
-        .single()
-
-      if (freePlan) {
-        await supabase.from('subscriptions').insert({
-          organization_id: org.id,
-          plan_id: freePlan.id,
-          status: 'ATIVA',
-        })
-      }
+      // 2. Criar org + perfil + subscription via API (service role bypassa RLS)
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, nome, orgName }),
+      })
+      const json = await res.json()
+      if (!res.ok) { setErro(json.error ?? 'Erro ao criar organização.'); return }
 
       router.push('/dashboard')
       router.refresh()
