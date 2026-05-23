@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Inclui as fontes no bundle das serverless functions (necessário para react-pdf no Vercel)
+  outputFileTracingIncludes: {
+    '/api/obras/[id]/orcamento-pdf': ['./public/fonts/**'],
+  },
 };
 
 export default nextConfig;

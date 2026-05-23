@@ -1,8 +1,18 @@
-import { Document, Page, Text, View, Image, StyleSheet } from '@react-pdf/renderer'
+import { Document, Page, Text, View, Image, StyleSheet, Font } from '@react-pdf/renderer'
+import path from 'path'
+
+// Registra fonte local — incluída no bundle via outputFileTracingIncludes no next.config.ts
+Font.register({
+  family: 'Inter',
+  fonts: [
+    { src: path.join(process.cwd(), 'public/fonts/inter-regular.woff2'), fontWeight: 'normal' },
+    { src: path.join(process.cwd(), 'public/fonts/inter-bold.woff2'), fontWeight: 'bold' },
+  ],
+})
 
 // ─── Estilos estáticos no nível de módulo (StyleSheet.create fora de funções) ─
 const S = StyleSheet.create({
-  page: { fontSize: 9, backgroundColor: '#ffffff', paddingBottom: 40 },
+  page: { fontFamily: 'Inter', fontSize: 9, backgroundColor: '#ffffff', paddingBottom: 40 },
   // Header
   header: { paddingHorizontal: 32, paddingTop: 28, paddingBottom: 0 },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
