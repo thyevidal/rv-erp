@@ -435,7 +435,7 @@ export function OrcamentoPDFDocument({ obra, bdi, itens, cronogramas, branding }
     const ROXO_CLARO = lightenHex(cor, 0.5)
     const ROXO_SUAVE = lightenHex(cor, 0.8)
     const styles = buildStyles(ROXO, ROXO_CLARO, ROXO_SUAVE)
-    const logoSrc = branding.logo_url || LOGO_BASE64
+    const logoSrc = branding.logo_url || ''
     const nomeEmpresa = branding.nome_razao_social || 'Grev'
     const bdiTotal = bdi?.bdi_total ?? 0
     const impostosPct = bdi?.impostos ?? 0
