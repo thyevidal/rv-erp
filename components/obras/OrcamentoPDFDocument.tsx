@@ -8,12 +8,15 @@ import {
     Font,
 } from '@react-pdf/renderer'
 
-// Registra Inter para uso no PDF (react-pdf v4 não inclui Helvetica automaticamente)
+import path from 'path'
+
+// Fontes locais — não dependem de rede no serverless (react-pdf v4)
+const FONTS_DIR = path.join(process.cwd(), 'public/fonts')
 Font.register({
   family: 'Inter',
   fonts: [
-    { src: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-400-normal.woff' },
-    { src: 'https://cdn.jsdelivr.net/fontsource/fonts/inter@latest/latin-700-normal.woff', fontWeight: 'bold' },
+    { src: path.join(FONTS_DIR, 'inter-regular.woff2') },
+    { src: path.join(FONTS_DIR, 'inter-bold.woff2'), fontWeight: 'bold' },
   ],
 })
 
