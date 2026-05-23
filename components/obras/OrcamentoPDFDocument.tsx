@@ -1,18 +1,22 @@
 import { Document, Page, Text, View, Image, StyleSheet, Font } from '@react-pdf/renderer'
-import { INTER_REGULAR, INTER_BOLD } from './fonts'
+import path from 'path'
 
-// Fonte embutida como base64 — sem dependência de rede ou filesystem no serverless
+// Geist está dentro do bundle do Next.js — sempre disponível no Vercel serverless
+const GEIST_TTF = path.join(
+  path.dirname(require.resolve('next/package.json')),
+  'dist/compiled/@vercel/og/Geist-Regular.ttf'
+)
 Font.register({
-  family: 'Inter',
+  family: 'Geist',
   fonts: [
-    { src: INTER_REGULAR, fontWeight: 'normal' },
-    { src: INTER_BOLD, fontWeight: 'bold' },
+    { src: GEIST_TTF, fontWeight: 'normal' },
+    { src: GEIST_TTF, fontWeight: 'bold' },
   ],
 })
 
 // ─── Estilos estáticos no nível de módulo (StyleSheet.create fora de funções) ─
 const S = StyleSheet.create({
-  page: { fontFamily: 'Inter', fontSize: 9, backgroundColor: '#ffffff', paddingBottom: 40 },
+  page: { fontFamily: 'Geist', fontSize: 9, backgroundColor: '#ffffff', paddingBottom: 40 },
   // Header
   header: { paddingHorizontal: 32, paddingTop: 28, paddingBottom: 0 },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
