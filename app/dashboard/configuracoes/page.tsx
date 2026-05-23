@@ -283,7 +283,7 @@ export default function ConfiguracoesPage() {
           {[
             { label: 'Sistema', value: 'GREV — O DONO DA OBRA' },
             { label: 'Versão', value: 'v1.0.0 MVP' },
-            { label: 'Stack', value: 'Next.js 16 · Supabase · Tailwind CSS · Shadcn/UI' },
+
             { label: 'Módulos ativos', value: 'Obras · Orçamento · Curva ABC · Cronograma · Mapa de Coleta · Estoque' },
           ].map(({ label, value }) => (
             <div key={label} className="flex items-start justify-between py-2 text-sm border-b last:border-0">
