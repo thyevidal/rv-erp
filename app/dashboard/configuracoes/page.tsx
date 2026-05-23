@@ -281,7 +281,7 @@ export default function ConfiguracoesPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           {[
-            { label: 'Sistema', value: 'ERP Rezende & Vidal' },
+            { label: 'Sistema', value: 'GREV — O DONO DA OBRA' },
             { label: 'Versão', value: 'v1.0.0 MVP' },
             { label: 'Stack', value: 'Next.js 16 · Supabase · Tailwind CSS · Shadcn/UI' },
             { label: 'Módulos ativos', value: 'Obras · Orçamento · Curva ABC · Cronograma · Mapa de Coleta · Estoque' },
