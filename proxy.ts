@@ -1,13 +1,19 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
-export async function proxy(request: NextRequest) {
-  // 1. Criamos a resposta inicial
-  let supabaseResponse = NextResponse.next({
-    request,
-  })
+// Rotas públicas — não requerem autenticação
+const PUBLIC_PATHS = ['/', '/login', '/register', '/upgrade', '/politica-de-privacidade']
 
-  // 2. Configuramos o cliente Supabase focado em SSR
+function isPublicPath(pathname: string) {
+  if (PUBLIC_PATHS.includes(pathname)) return true
+  if (pathname.startsWith('/portal/')) return true
+  if (pathname.startsWith('/api/portal/')) return true
+  return false
+}
+
+export async function proxy(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request })
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -17,12 +23,8 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          // Atualizamos os cookies na requisição original
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-
-          // Sincronizamos a resposta com os novos cookies
           supabaseResponse = NextResponse.next({ request })
-
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           )
@@ -31,36 +33,30 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  // 3. Verificamos a sessão do usuário de forma segura
+  // Refresh da sessão — obrigatório para o @supabase/ssr funcionar
   const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
 
-  // 4. Definição de rotas
-  // Adicionamos a raiz '/' como rota que requer atenção para evitar o loop
-  const isLoginPage = pathname.startsWith('/login')
-  const isRootPage = pathname === '/'
-
-  // REGRA 1: Se NÃO estiver logado e tentar acessar algo privado (ou a raiz)
-  if (!user && !isLoginPage) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
+  // Rotas públicas: qualquer um pode acessar
+  if (isPublicPath(pathname)) {
+    // Se logado e tentar acessar /login → vai para dashboard
+    if (user && pathname === '/login') {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+    return supabaseResponse
   }
 
-  // REGRA 2: Se JÁ estiver logado e tentar acessar o login ou a raiz
-  if (user && (isLoginPage || isRootPage)) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
+  // Rotas privadas (/dashboard/*, /admin/*, etc): redireciona para /login se não autenticado
+  if (!user) {
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
   return supabaseResponse
 }
 
-// O Matcher garante que o proxy não rode em arquivos estáticos (imagens, etc), economizando processamento
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|apple-icon|icon|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
