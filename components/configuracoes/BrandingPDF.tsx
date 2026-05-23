@@ -105,7 +105,8 @@ export default function BrandingPDF() {
   async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !orgId) return
-    if (!file.type.startsWith('image/')) { toast.error('Selecione uma imagem (PNG, JPG, SVG)'); return }
+    const tiposPermitidos = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp']
+    if (!tiposPermitidos.includes(file.type)) { toast.error('Use PNG ou JPG — SVG não é suportado no PDF'); return }
     if (file.size > 2 * 1024 * 1024) { toast.error('Imagem deve ter menos de 2MB'); return }
 
     setUploadingLogo(true)
@@ -210,12 +211,12 @@ export default function BrandingPDF() {
               </div>
             )}
             <div>
-              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+              <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleLogoUpload} />
               <Button type="button" variant="outline" size="sm" className="gap-2" disabled={uploadingLogo} onClick={() => fileRef.current?.click()}>
                 {uploadingLogo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                 {uploadingLogo ? 'Enviando...' : branding.logo_url ? 'Trocar logo' : 'Enviar logo'}
               </Button>
-              <p className="text-xs text-muted-foreground mt-1">PNG, JPG ou SVG · máx 2MB</p>
+              <p className="text-xs text-muted-foreground mt-1">PNG ou JPG · máx 2MB</p>
             </div>
           </div>
         </div>

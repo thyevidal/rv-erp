@@ -80,15 +80,19 @@ export async function GET(
     }
 
     // Se há logo_url, baixa a imagem e converte para base64
+    // react-pdf <Image> suporta apenas PNG e JPEG — SVG não é suportado
     let logoBase64 = ''
     if (branding.logo_url) {
         try {
             const cleanUrl = branding.logo_url.split('?')[0]
             const res = await fetch(cleanUrl)
             if (res.ok) {
-                const buffer = await res.arrayBuffer()
-                const contentType = res.headers.get('content-type') || 'image/png'
-                logoBase64 = `data:${contentType};base64,${Buffer.from(buffer).toString('base64')}`
+                const contentType = res.headers.get('content-type') || ''
+                // Ignora SVG — react-pdf não suporta SVG no componente <Image>
+                if (!contentType.includes('svg')) {
+                    const buffer = await res.arrayBuffer()
+                    logoBase64 = `data:${contentType || 'image/png'};base64,${Buffer.from(buffer).toString('base64')}`
+                }
             }
         } catch {
             // Falhou ao baixar logo — segue sem
