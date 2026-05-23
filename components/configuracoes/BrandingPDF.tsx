@@ -62,19 +62,17 @@ export default function BrandingPDF() {
   useEffect(() => {
     async function load() {
       try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-        const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single()
-        if (!profile?.organization_id) return
-        setOrgId(profile.organization_id)
-        const { data: org } = await supabase.from('organizations').select('nome_razao_social, cnpj, telefone, logo_url, cor_primaria').eq('id', profile.organization_id).single()
-        if (org) {
+        const res = await fetch('/api/organizacao/branding')
+        if (!res.ok) return
+        const json = await res.json()
+        if (json.orgId) setOrgId(json.orgId)
+        if (json.branding) {
           const b: Branding = {
-            nome_razao_social: org.nome_razao_social ?? '',
-            cnpj: org.cnpj ?? '',
-            telefone: org.telefone ?? '',
-            logo_url: org.logo_url ?? '',
-            cor_primaria: org.cor_primaria ?? DEFAULT_COLOR,
+            nome_razao_social: json.branding.nome_razao_social ?? '',
+            cnpj: json.branding.cnpj ?? '',
+            telefone: json.branding.telefone ?? '',
+            logo_url: json.branding.logo_url ?? '',
+            cor_primaria: json.branding.cor_primaria ?? DEFAULT_COLOR,
           }
           setBranding(b)
           setHexInput(b.cor_primaria)
@@ -86,7 +84,6 @@ export default function BrandingPDF() {
       }
     }
     load()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function set(field: keyof Branding, value: string) {
@@ -138,17 +135,21 @@ export default function BrandingPDF() {
   }
 
   async function handleSave() {
-    if (!orgId) return
     setSaving(true)
     try {
-      const { error } = await supabase.from('organizations').update({
-        nome_razao_social: branding.nome_razao_social || null,
-        cnpj: branding.cnpj || null,
-        telefone: branding.telefone || null,
-        logo_url: branding.logo_url || null,
-        cor_primaria: isValidHex(branding.cor_primaria) ? branding.cor_primaria : DEFAULT_COLOR,
-      }).eq('id', orgId)
-      if (error) throw error
+      const res = await fetch('/api/organizacao/branding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome_razao_social: branding.nome_razao_social,
+          cnpj: branding.cnpj,
+          telefone: branding.telefone,
+          logo_url: branding.logo_url,
+          cor_primaria: isValidHex(branding.cor_primaria) ? branding.cor_primaria : DEFAULT_COLOR,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Erro ao salvar.')
       toast.success('Configurações de PDF salvas!')
     } catch (err: any) {
       toast.error('Erro ao salvar: ' + err.message)
