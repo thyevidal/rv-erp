@@ -104,42 +104,66 @@ export default function ConfiguracoesPage() {
         </p>
       </div>
 
-      {/* Perfil */}
-      <Card className="border-border/60">
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base flex items-center gap-2">
-            <User className="w-4 h-4 text-primary" />
-            Perfil do Usuário
-          </CardTitle>
-          <CardDescription>Informações da sua conta no sistema.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {loadingUser ? (
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <Loader2 className="w-4 h-4 animate-spin" /> Carregando...
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/40">
-                <div>
-                  <p className="text-xs text-muted-foreground">E-mail</p>
-                  <p className="font-medium text-sm mt-0.5">{user?.email ?? '—'}</p>
-                </div>
-                <Badge variant="secondary" className="text-xs gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-green-500" />
-                  Verificado
-                </Badge>
+      {/* Perfil + PDF — linha lado a lado */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+        {/* Perfil */}
+        <Card className="border-border/60 h-full">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base flex items-center gap-2">
+              <User className="w-4 h-4 text-primary" />
+              Perfil do Usuário
+            </CardTitle>
+            <CardDescription>Informações da sua conta no sistema.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {loadingUser ? (
+              <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                <Loader2 className="w-4 h-4 animate-spin" /> Carregando...
               </div>
-              <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/40">
-                <div>
-                  <p className="text-xs text-muted-foreground">ID do Usuário</p>
-                  <p className="font-mono text-xs mt-0.5 text-muted-foreground">{user?.id ?? '—'}</p>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/40">
+                  <div>
+                    <p className="text-xs text-muted-foreground">E-mail</p>
+                    <p className="font-medium text-sm mt-0.5">{user?.email ?? '—'}</p>
+                  </div>
+                  <Badge variant="secondary" className="text-xs gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-green-500" />
+                    Verificado
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/40">
+                  <div>
+                    <p className="text-xs text-muted-foreground">ID do Usuário</p>
+                    <p className="font-mono text-xs mt-0.5 text-muted-foreground">{user?.id ?? '—'}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Personalização do PDF */}
+        <Link href="/dashboard/configuracoes/pdf" className="h-full">
+          <Card className="border-border/60 hover:border-primary/40 hover:bg-muted/30 transition-colors cursor-pointer h-full">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="w-4 h-4 text-primary" />
+                Personalização do PDF
+              </CardTitle>
+              <CardDescription>Logo, cor e dados da empresa nos orçamentos exportados.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Configure o cabeçalho dos PDFs gerados: logo da empresa, cor principal, razão social, CNPJ e telefone.
+              </p>
+              <div className="flex items-center gap-1 mt-3 text-primary text-sm font-medium">
+                Configurar <ChevronRight className="w-4 h-4" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
 
       {/* Alterar Senha */}
       <Card className="border-border/60">
@@ -270,24 +294,6 @@ export default function ConfiguracoesPage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Branding PDF — link para subpágina */}
-      <Link href="/dashboard/configuracoes/pdf">
-        <Card className="border-border/60 hover:border-primary/40 hover:bg-muted/30 transition-colors cursor-pointer">
-          <CardContent className="py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                <FileText className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Personalização do PDF</p>
-                <p className="text-xs text-muted-foreground">Logo, cor e dados da empresa nos orçamentos exportados</p>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </CardContent>
-        </Card>
-      </Link>
 
       {/* Sobre o Sistema */}
       <Card className="border-border/60">

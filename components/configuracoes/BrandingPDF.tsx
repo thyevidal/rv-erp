@@ -61,24 +61,29 @@ export default function BrandingPDF() {
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single()
-      if (!profile?.organization_id) return
-      setOrgId(profile.organization_id)
-      const { data: org } = await supabase.from('organizations').select('nome_razao_social, cnpj, telefone, logo_url, cor_primaria').eq('id', profile.organization_id).single()
-      if (org) {
-        const b: Branding = {
-          nome_razao_social: org.nome_razao_social ?? '',
-          cnpj: org.cnpj ?? '',
-          telefone: org.telefone ?? '',
-          logo_url: org.logo_url ?? '',
-          cor_primaria: org.cor_primaria ?? DEFAULT_COLOR,
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single()
+        if (!profile?.organization_id) return
+        setOrgId(profile.organization_id)
+        const { data: org } = await supabase.from('organizations').select('nome_razao_social, cnpj, telefone, logo_url, cor_primaria').eq('id', profile.organization_id).single()
+        if (org) {
+          const b: Branding = {
+            nome_razao_social: org.nome_razao_social ?? '',
+            cnpj: org.cnpj ?? '',
+            telefone: org.telefone ?? '',
+            logo_url: org.logo_url ?? '',
+            cor_primaria: org.cor_primaria ?? DEFAULT_COLOR,
+          }
+          setBranding(b)
+          setHexInput(b.cor_primaria)
         }
-        setBranding(b)
-        setHexInput(b.cor_primaria)
+      } catch {
+        // falha silenciosa — mostra formulário vazio
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
     load()
   // eslint-disable-next-line react-hooks/exhaustive-deps
