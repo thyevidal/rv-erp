@@ -21,12 +21,56 @@ export async function GET(
         return NextResponse.json({ error: 'Obra não encontrada' }, { status: 404 })
     }
 
+    // Busca branding da organização
+    let branding = {
+        nome_razao_social: '',
+        cnpj: '',
+        telefone: '',
+        logo_url: '',
+        cor_primaria: '#3C3489',
+    }
+
+    if (obra.organization_id) {
+        const { data: org } = await supabase
+            .from('organizations')
+            .select('nome_razao_social, cnpj, telefone, logo_url, cor_primaria')
+            .eq('id', obra.organization_id)
+            .single()
+        if (org) {
+            branding = {
+                nome_razao_social: org.nome_razao_social ?? '',
+                cnpj: org.cnpj ?? '',
+                telefone: org.telefone ?? '',
+                logo_url: org.logo_url ?? '',
+                cor_primaria: org.cor_primaria ?? '#3C3489',
+            }
+        }
+    }
+
+    // Se há logo_url, baixa a imagem e converte para base64
+    let logoBase64 = ''
+    if (branding.logo_url) {
+        try {
+            // Remove cache bust query param para fazer fetch limpo
+            const cleanUrl = branding.logo_url.split('?')[0]
+            const res = await fetch(cleanUrl)
+            if (res.ok) {
+                const buffer = await res.arrayBuffer()
+                const contentType = res.headers.get('content-type') || 'image/png'
+                logoBase64 = `data:${contentType};base64,${Buffer.from(buffer).toString('base64')}`
+            }
+        } catch {
+            // Falhou ao baixar logo — segue sem
+        }
+    }
+
     const rawBuffer = await renderToBuffer(
         OrcamentoPDFDocument({
             obra,
             bdi,
             itens: itens ?? [],
             cronogramas: cronogramas ?? [],
+            branding: { ...branding, logo_url: logoBase64 },
         })
     )
 

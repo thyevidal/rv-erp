@@ -14,6 +14,7 @@ import {
   ShieldCheck, Download, Trash2, ExternalLink,
 } from 'lucide-react'
 import Link from 'next/link'
+import BrandingPDF from '@/components/configuracoes/BrandingPDF'
 
 export default function ConfiguracoesPage() {
   const supabase = createClient()
@@ -270,6 +271,9 @@ export default function ConfiguracoesPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Branding PDF */}
+      <BrandingPDF />
 
       {/* Sobre o Sistema */}
       <Card className="border-border/60">
