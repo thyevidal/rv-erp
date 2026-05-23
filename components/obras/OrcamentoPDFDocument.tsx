@@ -1,12 +1,12 @@
 import { Document, Page, Text, View, Image, StyleSheet, Font } from '@react-pdf/renderer'
-import path from 'path'
+import { INTER_REGULAR, INTER_BOLD } from './fonts'
 
-// Registra fonte local — incluída no bundle via outputFileTracingIncludes no next.config.ts
+// Fonte embutida como base64 — sem dependência de rede ou filesystem no serverless
 Font.register({
   family: 'Inter',
   fonts: [
-    { src: path.join(process.cwd(), 'public/fonts/inter-regular.woff2'), fontWeight: 'normal' },
-    { src: path.join(process.cwd(), 'public/fonts/inter-bold.woff2'), fontWeight: 'bold' },
+    { src: INTER_REGULAR, fontWeight: 'normal' },
+    { src: INTER_BOLD, fontWeight: 'bold' },
   ],
 })
 
