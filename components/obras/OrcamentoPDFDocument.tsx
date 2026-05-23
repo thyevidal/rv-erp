@@ -264,9 +264,12 @@ export function OrcamentoPDFDocument({ obra, bdi, itens, cronogramas, branding }
     ? `${dataInicio} até ${dataFim}`
     : obra.prazo_dias ? `${obra.prazo_dias} dias` : null
 
-  // Preço de venda = custo / (1 - BDI%) — mesma fórmula da orcamento_itens_view
-  // Calculado aqui para garantir consistência independente da view estar acessível
-  const bdiPct = bdi?.bdi_total ?? 0
+  // bdi_total é coluna GENERATED no banco — pode vir null via PostgREST
+  // Mesmo fallback que o frontend usa: soma dos componentes individuais
+  const bdiPct = bdi?.bdi_total
+    ?? ((bdi?.impostos ?? 0) + (bdi?.margem_lucro ?? 0) + (bdi?.seguros ?? 0) + (bdi?.custos_indiretos ?? 0))
+
+  // Preço de venda = custo / (1 - BDI%) — mesma função calcBdiPrecoVenda do frontend
   const toVenda = (custo: number) =>
     bdiPct > 0 && bdiPct < 100
       ? Math.round((custo / (1 - bdiPct / 100)) * 100) / 100
