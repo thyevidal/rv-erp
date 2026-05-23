@@ -47,7 +47,7 @@ export async function GET(
         admin.from('obras').select('*').eq('id', id).eq('organization_id', profile.organization_id).single(),
         admin.from('bdi_config').select('bdi_total, impostos, margem_lucro, seguros, custos_indiretos').eq('obra_id', id).maybeSingle(),
         admin.from('orcamento_itens').select('*').eq('obra_id', id).order('etapa').order('created_at'),
-        admin.from('cronograma').select('tarefa').eq('obra_id', id).order('data_prevista_inicio'),
+        admin.from('cronograma').select('tarefa, data_prevista_inicio, data_prevista_fim').eq('obra_id', id).order('data_prevista_inicio'),
     ])
 
     if (!obra) {
