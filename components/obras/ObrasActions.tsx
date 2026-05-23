@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -56,7 +55,6 @@ const CHECKLIST_AC: { fase: number; item: string; ordem: number }[] = [
 
 export default function ObrasActions({ primary }: Props) {
   const router = useRouter()
-  const supabase = createClient()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [tipo, setTipo] = useState<'COMUM' | 'AQUISICAO_CONSTRUCAO'>('COMUM')
@@ -73,94 +71,52 @@ export default function ObrasActions({ primary }: Props) {
     if (!form.nome.trim()) { toast.error('Informe o nome da obra'); return }
     setLoading(true)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user!.id).single()
-
-    // ── Verificar limite do plano ──────────────────────────────────────────
-    const orgId = profile?.organization_id
-    if (orgId) {
-      const { data: sub } = await supabase
-        .from('subscriptions')
-        .select('plan_id, plans(max_obras)')
-        .eq('organization_id', orgId)
-        .eq('status', 'ATIVA')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-
-      const maxObras: number = (sub as any)?.plans?.max_obras ?? 1
-
-      if (maxObras !== -1) {
-        const { count } = await supabase
-          .from('obras')
-          .select('id', { count: 'exact', head: true })
-          .eq('organization_id', orgId)
-          .is('deleted_at', null)
-
-        if ((count ?? 0) >= maxObras) {
-          toast.error(`Você atingiu o limite de ${maxObras} obra${maxObras > 1 ? 's' : ''} do seu plano. Faça upgrade para continuar.`)
-          setLoading(false)
-          return
-        }
-      }
+    // Usa API route com service role para bypassar RLS (inclui verificação de plano)
+    const res = await fetch('/api/obras/criar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tipo,
+        obra: {
+          nome: form.nome,
+          endereco: form.endereco || null,
+          status: form.status,
+          data_inicio: form.data_inicio || null,
+          data_fim: form.data_fim || null,
+          descricao: form.descricao || null,
+          ...(tipo === 'AQUISICAO_CONSTRUCAO' ? {
+            cliente_nome: form.cliente_nome || null,
+            cliente_cpf: form.cliente_cpf || null,
+            credito_aprovado: parseFloat(form.credito_aprovado.replace(/\./g, '').replace(',', '.')) || null,
+            recursos_proprios: parseFloat(form.recursos_proprios.replace(/\./g, '').replace(',', '.')) || null,
+            correspondente_nome: form.correspondente_nome || null,
+            correspondente_email: form.correspondente_email || null,
+          } : {}),
+        },
+      }),
+    })
+    const json = await res.json()
+    if (!res.ok) {
+      toast.error(json.error ?? 'Erro ao criar obra.')
+      setLoading(false)
+      return
     }
-    // ──────────────────────────────────────────────────────────────────────
+    const obra = json.obra
 
-    const { data: obra, error } = await supabase.from('obras').insert({
-      nome: form.nome,
-      endereco: form.endereco || null,
-      status: form.status,
-      data_inicio: form.data_inicio || null,
-      data_fim: form.data_fim || null,
-      descricao: form.descricao || null,
-      tipo,
-      user_id: user!.id,
-      organization_id: profile?.organization_id,
-      ...(tipo === 'AQUISICAO_CONSTRUCAO' ? {
-        cliente_nome: form.cliente_nome || null,
-        cliente_cpf: form.cliente_cpf || null,
-        credito_aprovado: parseFloat(form.credito_aprovado.replace(/\./g, '').replace(',', '.')) || null,
-        recursos_proprios: parseFloat(form.recursos_proprios.replace(/\./g, '').replace(',', '.')) || null,
-        correspondente_nome: form.correspondente_nome || null,
-        correspondente_email: form.correspondente_email || null,
-      } : {}),
-    }).select().single()
-
-    if (error || !obra) { toast.error('Erro ao criar obra: ' + error?.message); setLoading(false); return }
-
-    // Se AC, criar fases e checklist automaticamente
-    if (tipo === 'AQUISICAO_CONSTRUCAO') {
-      // Cria 6 fases
-      await supabase.from('ac_fases').insert(
-        [1, 2, 3, 4, 5, 6].map(n => ({ obra_id: obra.id, fase_numero: n, status: n === 1 ? 'EM_ANDAMENTO' : 'PENDENTE' }))
-      )
-      // Cria checklist completo
-      await supabase.from('ac_checklist').insert(
-        CHECKLIST_AC.map(c => ({ obra_id: obra.id, fase_numero: c.fase, item: c.item, ordem: c.ordem, concluido: false }))
-      )
-      // Cria acessos para cliente e correspondente
-      if (form.cliente_nome || form.correspondente_nome) {
-        const acessos = []
-        if (form.cliente_nome) acessos.push({ obra_id: obra.id, tipo: 'CLIENTE', nome: form.cliente_nome, email: null })
-        if (form.correspondente_nome) acessos.push({ obra_id: obra.id, tipo: 'CORRESPONDENTE', nome: form.correspondente_nome, email: form.correspondente_email || null })
-        const { data: acessosCriados } = await supabase.from('ac_acessos').insert(acessos).select()
-
-        // Enviar e-mail de convite para o correspondente (se tiver e-mail)
-        if (acessosCriados && form.correspondente_email) {
-          const correspondAcesso = acessosCriados.find((a: { tipo: string }) => a.tipo === 'CORRESPONDENTE')
-          if (correspondAcesso) {
-            fetch('/api/email/convite-portal', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                email: form.correspondente_email,
-                nomeObra: obra.nome,
-                token: correspondAcesso.token,
-                tipo: 'CORRESPONDENTE',
-              }),
-            }).catch(() => { /* falha silenciosa */ })
-          }
-        }
+    // Enviar e-mail de convite para o correspondente (se AC e tiver e-mail)
+    if (tipo === 'AQUISICAO_CONSTRUCAO' && form.correspondente_email && json.acessosCriados) {
+      const correspondAcesso = json.acessosCriados.find((a: { tipo: string }) => a.tipo === 'CORRESPONDENTE')
+      if (correspondAcesso) {
+        fetch('/api/email/convite-portal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: form.correspondente_email,
+            nomeObra: obra.nome,
+            token: correspondAcesso.token,
+            tipo: 'CORRESPONDENTE',
+          }),
+        }).catch(() => { /* falha silenciosa */ })
       }
     }
 

@@ -11,10 +11,9 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import {
   Settings, User, Lock, Building2, Loader2, CheckCircle2,
-  ShieldCheck, Download, Trash2, ExternalLink,
+  ShieldCheck, Download, Trash2, ExternalLink, FileText, ChevronRight,
 } from 'lucide-react'
 import Link from 'next/link'
-import BrandingPDF from '@/components/configuracoes/BrandingPDF'
 
 export default function ConfiguracoesPage() {
   const supabase = createClient()
@@ -272,8 +271,23 @@ export default function ConfiguracoesPage() {
         </CardContent>
       </Card>
 
-      {/* Branding PDF */}
-      <BrandingPDF />
+      {/* Branding PDF — link para subpágina */}
+      <Link href="/dashboard/configuracoes/pdf">
+        <Card className="border-border/60 hover:border-primary/40 hover:bg-muted/30 transition-colors cursor-pointer">
+          <CardContent className="py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                <FileText className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Personalização do PDF</p>
+                <p className="text-xs text-muted-foreground">Logo, cor e dados da empresa nos orçamentos exportados</p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </CardContent>
+        </Card>
+      </Link>
 
       {/* Sobre o Sistema */}
       <Card className="border-border/60">
