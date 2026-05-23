@@ -3,19 +3,21 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { renderToBuffer, Font } from '@react-pdf/renderer'
 import { OrcamentoPDFDocument } from '@/components/obras/OrcamentoPDFDocument'
+import { GEIST_REGULAR_TTF } from '@/lib/pdf-font-data'
 
-// Garante registro da fonte ANTES de qualquer render — necessário no serverless
-// pois cada invocação pode ter contexto de módulo isolado (Turbopack/edge)
+// Registra fonte real (TTF base64) antes de cada render
+// STANDARD_FONTS da react-pdf (src:'Helvetica') falha no Turbopack/serverless
+let fontsRegistered = false
 function ensureFonts() {
+    if (fontsRegistered) return
     Font.register({
-        family: 'Helvetica',
+        family: 'Geist',
         fonts: [
-            { src: 'Helvetica' },
-            { src: 'Helvetica-Bold', fontWeight: 'bold' },
-            { src: 'Helvetica-Oblique', fontStyle: 'italic' },
-            { src: 'Helvetica-BoldOblique', fontWeight: 'bold', fontStyle: 'italic' },
+            { src: GEIST_REGULAR_TTF },
+            { src: GEIST_REGULAR_TTF, fontWeight: 'bold' },
         ],
     })
+    fontsRegistered = true
 }
 
 export async function GET(

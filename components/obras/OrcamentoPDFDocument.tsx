@@ -1,15 +1,7 @@
-import { Document, Page, Text, View, Image, StyleSheet, Font } from '@react-pdf/renderer'
+import { Document, Page, Text, View, Image, StyleSheet } from '@react-pdf/renderer'
 
-// ─── Fontes padrão PDF (sem download, sem base64 — já embutidas no motor PDF) ──
-Font.register({
-  family: 'Helvetica',
-  fonts: [
-    { src: 'Helvetica' },
-    { src: 'Helvetica-Bold', fontWeight: 'bold' },
-    { src: 'Helvetica-Oblique', fontStyle: 'italic' },
-    { src: 'Helvetica-BoldOblique', fontWeight: 'bold', fontStyle: 'italic' },
-  ],
-})
+// Font.register é chamado no API route (ensureFonts) antes de renderToBuffer
+// A família usada aqui deve bater com o que está registrado lá: 'Geist'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface Obra {
@@ -72,7 +64,7 @@ const fmtN = (v?: number | null, dec = 2) =>
 // ─── Estilos estáticos (dinâmico vai inline no JSX) ───────────────────────────
 const S = StyleSheet.create({
   page: {
-    fontFamily: 'Helvetica',
+    fontFamily: 'Geist',
     fontSize: 9,
     color: '#1a1a2e',
     backgroundColor: '#ffffff',
