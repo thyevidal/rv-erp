@@ -51,14 +51,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { obra: obraData, tipo } = body
 
-    // Valida organização do usuário
-    const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single()
+    // Admin client bypassa RLS em todas as operações
+    const admin = createAdminClient()
+
+    // Usa admin para ler o perfil — garante leitura mesmo com RLS ativo
+    const { data: profile } = await admin.from('profiles').select('organization_id').eq('id', user.id).single()
     if (!profile?.organization_id) return NextResponse.json({ error: 'Organização não encontrada.' }, { status: 403 })
 
     const orgId = profile.organization_id
 
     // Verifica limite do plano
-    const { data: sub } = await supabase
+    const { data: sub } = await admin
       .from('subscriptions')
       .select('plan_id, plans(max_obras)')
       .eq('organization_id', orgId)
@@ -70,7 +73,7 @@ export async function POST(request: NextRequest) {
     const maxObras: number = (sub as any)?.plans?.max_obras ?? 1
 
     if (maxObras !== -1) {
-      const { count } = await supabase
+      const { count } = await admin
         .from('obras')
         .select('id', { count: 'exact', head: true })
         .eq('organization_id', orgId)
@@ -83,9 +86,6 @@ export async function POST(request: NextRequest) {
         }, { status: 403 })
       }
     }
-
-    // Usa admin client para bypassar RLS no insert
-    const admin = createAdminClient()
 
     const { data: obra, error: obraError } = await admin.from('obras').insert({
       ...obraData,

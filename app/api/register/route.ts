@@ -22,11 +22,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Erro ao criar organização: ' + orgError?.message }, { status: 500 })
     }
 
-    // 2. Atualizar perfil do usuário com nome e organization_id
+    // 2. Upsert perfil do usuário — cria ou atualiza (garante que a linha exista)
     const { error: profileError } = await admin
       .from('profiles')
-      .update({ name: nome, organization_id: org.id })
-      .eq('id', userId)
+      .upsert({ id: userId, name: nome, organization_id: org.id }, { onConflict: 'id' })
 
     if (profileError) {
       return NextResponse.json({ error: 'Erro ao atualizar perfil: ' + profileError.message }, { status: 500 })
