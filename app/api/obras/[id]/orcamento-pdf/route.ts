@@ -102,8 +102,9 @@ export async function GET(
     }
 
     // Calcula BDI aqui — evita dependência de coluna GENERATED (bdi_total pode vir null via PostgREST)
+    const impostosAliq = bdiRow?.impostos ?? 0
     const bdiPct = bdiRow
-        ? (bdiRow.impostos ?? 0) + (bdiRow.margem_lucro ?? 0) + (bdiRow.seguros ?? 0) + (bdiRow.custos_indiretos ?? 0)
+        ? impostosAliq + (bdiRow.margem_lucro ?? 0) + (bdiRow.seguros ?? 0) + (bdiRow.custos_indiretos ?? 0)
         : 0
 
     ensureFonts()
@@ -112,6 +113,7 @@ export async function GET(
         OrcamentoPDFDocument({
             obra,
             bdiPct,
+            impostosAliq,
             itens: itens ?? [],
             cronogramas: cronogramas ?? [],
             branding: { ...branding, logo_url: logoBase64 },

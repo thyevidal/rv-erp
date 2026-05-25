@@ -42,8 +42,10 @@ interface Branding {
 
 interface Props {
   obra: Obra
-  /** BDI já calculado no route (soma impostos + margem_lucro + seguros + custos_indiretos) */
+  /** BDI total já calculado no route (impostos + margem_lucro + seguros + custos_indiretos) */
   bdiPct: number
+  /** Alíquota apenas de impostos do bdi_config — usada para separar a linha de impostos */
+  impostosAliq: number
   itens: OrcamentoItem[]
   cronogramas: Cronograma[]
   branding: Branding
@@ -238,7 +240,7 @@ const S = StyleSheet.create({
 })
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-export function OrcamentoPDFDocument({ obra, bdiPct, itens, cronogramas, branding }: Props) {
+export function OrcamentoPDFDocument({ obra, bdiPct, impostosAliq, itens, cronogramas, branding }: Props) {
   const cor = branding.cor_primaria || '#3C3489'
   const hoje = new Date()
   const dataDoc = hoje.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
@@ -257,31 +259,48 @@ export function OrcamentoPDFDocument({ obra, bdiPct, itens, cronogramas, brandin
     ? `${dataInicio} até ${dataFim}`
     : obra.prazo_dias ? `${obra.prazo_dias} dias` : null
 
-  // Custo direto por categoria (sem BDI)
-  const custoMaoDeObra = itens
+  // Helper: converte custo → preço de venda aplicando BDI total
+  const toVenda = (custo: number) =>
+    bdiPct > 0 && bdiPct < 100
+      ? Math.round((custo / (1 - bdiPct / 100)) * 100) / 100
+      : custo
+
+  // P.Venda por categoria (soma dos P.Venda individuais dos itens)
+  const pVendaMdo = itens
+    .filter(i => i.tipo === 'MAO_DE_OBRA')
+    .reduce((s, i) => s + toVenda((i.quantidade ?? 0) * (i.custo_unitario_aplicado ?? 0)), 0)
+  const pVendaMat = itens
+    .filter(i => i.tipo === 'MATERIAL')
+    .reduce((s, i) => s + toVenda((i.quantidade ?? 0) * (i.custo_unitario_aplicado ?? 0)), 0)
+
+  // Custo direto por categoria (sem BDI) — necessário para calcular o markup
+  const custoMdo = itens
     .filter(i => i.tipo === 'MAO_DE_OBRA')
     .reduce((s, i) => s + (i.quantidade ?? 0) * (i.custo_unitario_aplicado ?? 0), 0)
-  const custoMaterial = itens
+  const custoMat = itens
     .filter(i => i.tipo === 'MATERIAL')
     .reduce((s, i) => s + (i.quantidade ?? 0) * (i.custo_unitario_aplicado ?? 0), 0)
-  const custoDireto = custoMaoDeObra + custoMaterial
+  const custoDireto = custoMdo + custoMat
+  const totalPVenda = pVendaMdo + pVendaMat
+  const markupTotal = totalPVenda - custoDireto
 
-  // Preço de venda total = custo / (1 - BDI%)
-  const precoVenda = bdiPct > 0 && bdiPct < 100
-    ? Math.round((custoDireto / (1 - bdiPct / 100)) * 100) / 100
-    : custoDireto
+  // Fração dos impostos dentro do BDI total
+  // Extrai a parte de impostos do markup e subtrai das linhas de mdo/mat
+  // Garante que: mdo_linha + mat_linha + impostos_linha = total P.Venda
+  const impostosRatio = bdiPct > 0 ? impostosAliq / bdiPct : 0
+  const impostosValor  = Math.round(markupTotal * impostosRatio * 100) / 100
+  const markupMdo      = pVendaMdo - custoMdo
+  const mdo_linha      = Math.round((pVendaMdo - markupMdo * impostosRatio) * 100) / 100
+  // mat_linha é calculado por diferença para garantir soma exata sem arredondamento
+  const mat_linha      = Math.round((totalPVenda - impostosValor - mdo_linha) * 100) / 100
 
-  // Impostos e encargos = diferença entre preço de venda e custo direto
-  const totalImpostos = Math.round((precoVenda - custoDireto) * 100) / 100
-
-  // Total exibido no rodapé
-  const totalGeral = precoVenda
+  const totalGeral = mdo_linha + mat_linha + impostosValor
 
   // Composição para a tabela (apenas linhas com valor > 0)
   const composicao = [
-    { label: 'Mão de Obra e Serviços', desc: 'Execução dos serviços e empreitadas', valor: custoMaoDeObra },
-    { label: 'Materiais e Insumos', desc: 'Fornecimento de materiais e insumos', valor: custoMaterial },
-    { label: 'Impostos e Encargos', desc: `BDI ${bdiPct > 0 ? bdiPct.toFixed(2) : '0'}% — tributos, seguros e margem de resultado`, valor: totalImpostos },
+    { label: 'Mão de Obra e Serviços', desc: 'Execução dos serviços e empreitadas', valor: mdo_linha },
+    { label: 'Materiais e Insumos', desc: 'Fornecimento de materiais e insumos', valor: mat_linha },
+    { label: 'Impostos', desc: 'Tributos sobre o valor dos serviços', valor: impostosValor },
   ].filter(c => c.valor > 0)
 
   // Serviços (do cronograma) divididos em 2 colunas
