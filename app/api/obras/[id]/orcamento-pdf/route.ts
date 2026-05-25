@@ -43,9 +43,11 @@ export async function GET(
         return NextResponse.json({ error: 'Organização não encontrada.' }, { status: 403 })
     }
 
-    const [{ data: obra }, { data: bdi }, { data: itens }, { data: cronogramas }] = await Promise.all([
+    const [{ data: obra }, { data: bdiRow }, { data: itens }, { data: cronogramas }] = await Promise.all([
         admin.from('obras').select('*').eq('id', id).eq('organization_id', profile.organization_id).single(),
-        admin.from('bdi_config').select('bdi_total, impostos, margem_lucro, seguros, custos_indiretos').eq('obra_id', id).maybeSingle(),
+        // Não selecionamos bdi_total (coluna GENERATED — PostgREST pode retornar null)
+        // Calculamos nós mesmos a partir dos componentes individuais
+        admin.from('bdi_config').select('impostos, margem_lucro, seguros, custos_indiretos').eq('obra_id', id).maybeSingle(),
         admin.from('orcamento_itens').select('id, etapa, subetapa, descricao, tipo, unidade, quantidade, custo_unitario_aplicado').eq('obra_id', id).order('etapa').order('created_at'),
         admin.from('cronograma').select('tarefa, data_prevista_inicio, data_prevista_fim').eq('obra_id', id).order('data_prevista_inicio'),
     ])
@@ -99,12 +101,17 @@ export async function GET(
         }
     }
 
+    // Calcula BDI aqui — evita dependência de coluna GENERATED (bdi_total pode vir null via PostgREST)
+    const bdiPct = bdiRow
+        ? (bdiRow.impostos ?? 0) + (bdiRow.margem_lucro ?? 0) + (bdiRow.seguros ?? 0) + (bdiRow.custos_indiretos ?? 0)
+        : 0
+
     ensureFonts()
 
     const rawBuffer = await renderToBuffer(
         OrcamentoPDFDocument({
             obra,
-            bdi,
+            bdiPct,
             itens: itens ?? [],
             cronogramas: cronogramas ?? [],
             branding: { ...branding, logo_url: logoBase64 },

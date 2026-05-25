@@ -15,14 +15,6 @@ interface Obra {
   observacoes?: string
 }
 
-interface BdiConfig {
-  bdi_total?: number
-  impostos?: number
-  margem_lucro?: number
-  seguros?: number
-  custos_indiretos?: number
-}
-
 interface OrcamentoItem {
   id: string
   etapa: string
@@ -50,7 +42,8 @@ interface Branding {
 
 interface Props {
   obra: Obra
-  bdi: BdiConfig | null
+  /** BDI já calculado no route (soma impostos + margem_lucro + seguros + custos_indiretos) */
+  bdiPct: number
   itens: OrcamentoItem[]
   cronogramas: Cronograma[]
   branding: Branding
@@ -245,7 +238,7 @@ const S = StyleSheet.create({
 })
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-export function OrcamentoPDFDocument({ obra, bdi, itens, cronogramas, branding }: Props) {
+export function OrcamentoPDFDocument({ obra, bdiPct, itens, cronogramas, branding }: Props) {
   const cor = branding.cor_primaria || '#3C3489'
   const hoje = new Date()
   const dataDoc = hoje.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
@@ -264,29 +257,31 @@ export function OrcamentoPDFDocument({ obra, bdi, itens, cronogramas, branding }
     ? `${dataInicio} até ${dataFim}`
     : obra.prazo_dias ? `${obra.prazo_dias} dias` : null
 
-  // bdi_total é coluna GENERATED no banco — pode vir null via PostgREST
-  // Mesmo fallback que o frontend usa: soma dos componentes individuais
-  const bdiPct = bdi?.bdi_total
-    ?? ((bdi?.impostos ?? 0) + (bdi?.margem_lucro ?? 0) + (bdi?.seguros ?? 0) + (bdi?.custos_indiretos ?? 0))
-
-  // Preço de venda = custo / (1 - BDI%) — mesma função calcBdiPrecoVenda do frontend
-  const toVenda = (custo: number) =>
-    bdiPct > 0 && bdiPct < 100
-      ? Math.round((custo / (1 - bdiPct / 100)) * 100) / 100
-      : custo
-
-  const totalMaoDeObra = itens
+  // Custo direto por categoria (sem BDI)
+  const custoMaoDeObra = itens
     .filter(i => i.tipo === 'MAO_DE_OBRA')
-    .reduce((s, i) => s + toVenda((i.quantidade ?? 0) * (i.custo_unitario_aplicado ?? 0)), 0)
-  const totalMaterial = itens
+    .reduce((s, i) => s + (i.quantidade ?? 0) * (i.custo_unitario_aplicado ?? 0), 0)
+  const custoMaterial = itens
     .filter(i => i.tipo === 'MATERIAL')
-    .reduce((s, i) => s + toVenda((i.quantidade ?? 0) * (i.custo_unitario_aplicado ?? 0)), 0)
-  const totalGeral = totalMaoDeObra + totalMaterial
+    .reduce((s, i) => s + (i.quantidade ?? 0) * (i.custo_unitario_aplicado ?? 0), 0)
+  const custoDireto = custoMaoDeObra + custoMaterial
+
+  // Preço de venda total = custo / (1 - BDI%)
+  const precoVenda = bdiPct > 0 && bdiPct < 100
+    ? Math.round((custoDireto / (1 - bdiPct / 100)) * 100) / 100
+    : custoDireto
+
+  // Impostos e encargos = diferença entre preço de venda e custo direto
+  const totalImpostos = Math.round((precoVenda - custoDireto) * 100) / 100
+
+  // Total exibido no rodapé
+  const totalGeral = precoVenda
 
   // Composição para a tabela (apenas linhas com valor > 0)
   const composicao = [
-    { label: 'Mão de Obra e Serviços', desc: 'Execução dos serviços e empreitadas', valor: totalMaoDeObra },
-    { label: 'Materiais e Insumos', desc: 'Fornecimento de materiais e insumos', valor: totalMaterial },
+    { label: 'Mão de Obra e Serviços', desc: 'Execução dos serviços e empreitadas', valor: custoMaoDeObra },
+    { label: 'Materiais e Insumos', desc: 'Fornecimento de materiais e insumos', valor: custoMaterial },
+    { label: 'Impostos e Encargos', desc: `BDI ${bdiPct > 0 ? bdiPct.toFixed(2) : '0'}% — tributos, seguros e margem de resultado`, valor: totalImpostos },
   ].filter(c => c.valor > 0)
 
   // Serviços (do cronograma) divididos em 2 colunas
