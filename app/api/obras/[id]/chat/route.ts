@@ -37,13 +37,17 @@ export async function POST(
     return NextResponse.json({ error: 'Mensagem vazia.' }, { status: 400 })
   }
 
-  // Monta histórico no formato do Gemini
-  const history: Content[] = messages.slice(0, -1).map(m => ({
+  // Janela deslizante: envia só as últimas 20 mensagens ao modelo
+  // (histórico completo fica no localStorage do cliente)
+  const WINDOW = 20
+  const windowedMessages = messages.slice(-WINDOW)
+
+  const history: Content[] = windowedMessages.slice(0, -1).map(m => ({
     role: m.role,
     parts: [{ text: m.text }],
   }))
 
-  const lastMessage = messages[messages.length - 1].text
+  const lastMessage = windowedMessages[windowedMessages.length - 1].text
 
   const model = getAIModel()
   const systemPrompt = buildObraSystemPrompt(obra)
