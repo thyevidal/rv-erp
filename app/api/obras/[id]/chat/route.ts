@@ -49,7 +49,7 @@ export async function POST(
   const systemPrompt = buildObraSystemPrompt(obra)
 
   const chat = model.startChat({
-    systemInstruction: systemPrompt,
+    systemInstruction: { parts: [{ text: systemPrompt }] },
     tools: OBRA_TOOLS,
     history,
   })

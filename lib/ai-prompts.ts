@@ -1,4 +1,5 @@
 export function buildObraSystemPrompt(obra: {
+  id: string
   nome: string
   cliente?: string | null
   endereco?: string | null
@@ -9,6 +10,7 @@ export function buildObraSystemPrompt(obra: {
   observacoes?: string | null
 }): string {
   const detalhes = [
+    `ID da obra (use este valor ao chamar as ferramentas): ${obra.id}`,
     `Nome da obra: ${obra.nome}`,
     obra.cliente ? `Cliente: ${obra.cliente}` : null,
     obra.endereco ? `Endereço: ${obra.endereco}` : null,
