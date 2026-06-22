@@ -18,10 +18,9 @@ export async function POST(
   const { id: obraId } = await params
 
   // Usa o client com sessão do usuário — RLS garante que só retorna obras da org do usuário
-  // (mesmo padrão da página de detalhes da obra, que funciona corretamente)
   const { data: obra } = await supabase
     .from('obras')
-    .select('nome, cliente, endereco, cidade, uf, area_m2, prazo_dias, observacoes')
+    .select('*')
     .eq('id', obraId)
     .single()
 
