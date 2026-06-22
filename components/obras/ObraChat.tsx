@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Bot, X, Send, Loader2, ChevronDown, Sparkles } from 'lucide-react'
+import { Bot, X, Send, Loader2, Sparkles, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import ReactMarkdown from 'react-markdown'
 
 interface Message {
   role: 'user' | 'model'
@@ -17,13 +18,27 @@ const SUGESTOES = [
   'Quais tarefas posso adiantar se a equipe ficar ociosa?',
 ]
 
+const STORAGE_KEY = (obraId: string) => `obra-chat-${obraId}`
+
 export default function ObraChat({ obraId }: { obraId: string }) {
   const [open, setOpen] = useState(false)
-  const [messages, setMessages] = useState<Message[]>([])
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (typeof window === 'undefined') return []
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY(obraId))
+      return saved ? JSON.parse(saved) : []
+    } catch { return [] }
+  })
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY(obraId), JSON.stringify(messages))
+    } catch { /* storage cheio */ }
+  }, [messages, obraId])
 
   useEffect(() => {
     if (open) {
@@ -95,9 +110,20 @@ export default function ObraChat({ obraId }: { obraId: string }) {
             <Bot className="w-4 h-4" />
             <span className="font-semibold text-sm">Assistente da Obra</span>
           </div>
-          <button onClick={() => setOpen(false)} className="opacity-70 hover:opacity-100 transition-opacity">
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {messages.length > 0 && (
+              <button
+                onClick={() => setMessages([])}
+                className="opacity-70 hover:opacity-100 transition-opacity"
+                title="Limpar conversa"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <button onClick={() => setOpen(false)} className="opacity-70 hover:opacity-100 transition-opacity">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Mensagens */}
@@ -130,12 +156,14 @@ export default function ObraChat({ obraId }: { obraId: string }) {
                 </div>
               )}
               <div className={cn(
-                'max-w-[80%] rounded-2xl px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap',
+                'max-w-[80%] rounded-2xl px-3 py-2 text-sm leading-relaxed',
                 m.role === 'user'
-                  ? 'bg-primary text-primary-foreground rounded-br-sm'
-                  : 'bg-muted text-foreground rounded-bl-sm'
+                  ? 'bg-primary text-primary-foreground rounded-br-sm whitespace-pre-wrap'
+                  : 'bg-muted text-foreground rounded-bl-sm chat-md'
               )}>
-                {m.text}
+                {m.role === 'user' ? m.text : (
+                  <ReactMarkdown>{m.text}</ReactMarkdown>
+                )}
               </div>
             </div>
           ))}
