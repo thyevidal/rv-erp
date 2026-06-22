@@ -12,6 +12,7 @@ import EstoqueTab from '@/components/obras/EstoqueTab'
 import FinanceiroTab from '@/components/obras/FinanceiroTab'
 import ProcessoCaixaTab from '@/components/obras/ProcessoCaixaTab'
 import ObraHeaderActions from '@/components/obras/ObraHeaderActions'
+import ObraChat from '@/components/obras/ObraChat'
 
 const STATUS_MAP: Record<string, { label: string; classes: string }> = {
   PLANEJAMENTO: { label: 'Planejamento', classes: 'bg-blue-500/10 text-blue-400 border-blue-500/30' },
@@ -136,6 +137,8 @@ export default async function ObraDetailPage({ params }: { params: { id: string 
           />
         </TabsContent>
       </Tabs>
+
+      <ObraChat obraId={id} />
     </div>
   )
 }
