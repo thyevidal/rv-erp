@@ -46,11 +46,13 @@ export default function ObraChat({ obraId }: { obraId: string }) {
         body: JSON.stringify({ messages: next }),
       })
       const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? `Erro ${res.status}`)
       if (data.reply) {
         setMessages(prev => [...prev, { role: 'model', text: data.reply }])
       }
-    } catch {
-      setMessages(prev => [...prev, { role: 'model', text: 'Erro ao conectar com a IA. Tente novamente.' }])
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao conectar com a IA.'
+      setMessages(prev => [...prev, { role: 'model', text: `⚠️ ${msg} Tente novamente.` }])
     } finally {
       setLoading(false)
     }
