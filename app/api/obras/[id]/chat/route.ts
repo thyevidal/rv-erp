@@ -30,7 +30,7 @@ export async function POST(
   }
 
   // Filtra obra por id E organization_id — garante que pertence à org do usuário
-  const { data: obra } = await admin
+  const { data: obra, error: obraError } = await admin
     .from('obras')
     .select('nome, cliente, endereco, cidade, uf, area_m2, prazo_dias, observacoes')
     .eq('id', obraId)
@@ -38,7 +38,8 @@ export async function POST(
     .single()
 
   if (!obra) {
-    return NextResponse.json({ error: 'Obra não encontrada.' }, { status: 404 })
+    console.error('[chat] obra não encontrada', { obraId, orgId: profile.organization_id, obraError })
+    return NextResponse.json({ error: 'Obra não encontrada.', debug: { obraId, orgId: profile.organization_id, obraError } }, { status: 404 })
   }
 
   const body = await request.json()
