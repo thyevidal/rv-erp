@@ -1,23 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { getAIModel } from '@/lib/ai-client'
 import { buildObraSystemPrompt } from '@/lib/ai-prompts'
-import { OBRA_TOOLS, executeTool } from '@/lib/ai-tools'
+import { OBRA_TOOLS, executeTool, type PendingChanges } from '@/lib/ai-tools'
 import type { Content } from '@google/generative-ai'
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  // Valida sessão
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
 
   const { id: obraId } = await params
 
-  // Usa o client com sessão do usuário — RLS garante que só retorna obras da org do usuário
   const { data: obra } = await supabase
     .from('obras')
     .select('*')
@@ -28,8 +25,6 @@ export async function POST(
     return NextResponse.json({ error: 'Obra não encontrada.' }, { status: 404 })
   }
 
-  const admin = createAdminClient()
-
   const body = await request.json()
   const { messages }: { messages: { role: 'user' | 'model'; text: string }[] } = body
 
@@ -37,8 +32,6 @@ export async function POST(
     return NextResponse.json({ error: 'Mensagem vazia.' }, { status: 400 })
   }
 
-  // Janela deslizante: envia só as últimas 20 mensagens ao modelo
-  // (histórico completo fica no localStorage do cliente)
   const WINDOW = 20
   const windowedMessages = messages.slice(-WINDOW)
 
@@ -53,13 +46,13 @@ export async function POST(
   const systemPrompt = buildObraSystemPrompt(obra)
 
   const chat = model.startChat({
-    systemInstruction: { parts: [{ text: systemPrompt }] },
+    systemInstruction: { role: 'user', parts: [{ text: systemPrompt }] },
     tools: OBRA_TOOLS,
     history,
   })
 
-  // Loop de tool use — Gemini pode chamar tools várias vezes antes de responder
   let response = await chat.sendMessage(lastMessage)
+  const allPendingChanges: PendingChanges[] = []
 
   while (true) {
     const candidate = response.response.candidates?.[0]
@@ -68,15 +61,19 @@ export async function POST(
 
     if (!toolCalls.length) break
 
-    // Executa todas as tools solicitadas em paralelo
     const toolResults = await Promise.all(
       toolCalls.map(async part => {
         const fn = part.functionCall!
-        const result = await executeTool(fn.name, (fn.args ?? {}) as Record<string, string>)
+        const result = await executeTool(fn.name, (fn.args ?? {}) as Record<string, unknown>)
+
+        if (result.pendingChanges) {
+          allPendingChanges.push(result.pendingChanges)
+        }
+
         return {
           functionResponse: {
             name: fn.name,
-            response: { result },
+            response: { result: result.text },
           },
         }
       })
@@ -87,5 +84,8 @@ export async function POST(
 
   const text = response.response.text()
 
-  return NextResponse.json({ reply: text })
+  return NextResponse.json({
+    reply: text,
+    ...(allPendingChanges.length > 0 && { pendingChanges: allPendingChanges[0] }),
+  })
 }
