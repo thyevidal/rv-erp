@@ -18,20 +18,26 @@ export async function POST(
   const admin = createAdminClient()
   const { id: obraId } = await params
 
-  // Valida que a obra pertence à org do usuário
+  // Busca org do usuário — mesmo padrão do route de orcamento-pdf
   const { data: profile } = await admin
     .from('profiles')
     .select('organization_id')
     .eq('id', user.id)
     .single()
 
+  if (!profile?.organization_id) {
+    return NextResponse.json({ error: 'Organização não encontrada.' }, { status: 403 })
+  }
+
+  // Filtra obra por id E organization_id — garante que pertence à org do usuário
   const { data: obra } = await admin
     .from('obras')
-    .select('nome, cliente, endereco, cidade, uf, area_m2, prazo_dias, observacoes, organization_id')
+    .select('nome, cliente, endereco, cidade, uf, area_m2, prazo_dias, observacoes')
     .eq('id', obraId)
+    .eq('organization_id', profile.organization_id)
     .single()
 
-  if (!obra || obra.organization_id !== profile?.organization_id) {
+  if (!obra) {
     return NextResponse.json({ error: 'Obra não encontrada.' }, { status: 404 })
   }
 
