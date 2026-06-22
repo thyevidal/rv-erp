@@ -23,6 +23,10 @@ const SUGESTOES = [
 
 const STORAGE_KEY = (obraId: string) => `obra-chat-${obraId}`
 
+const sanitize = (text: string) =>
+  text.replace(/<(script|style|iframe|object|embed|link|meta)[\s\S]*?<\/\1>/gi, '')
+      .replace(/<(script|style|iframe|object|embed|link|meta)[^>]*\/>/gi, '')
+
 const fmtDate = (d: string | null) =>
   d ? new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '—'
 
@@ -382,12 +386,7 @@ export default function ObraChat({ obraId }: { obraId: string }) {
                     : 'bg-muted text-foreground rounded-bl-sm chat-md'
                 )}>
                   {m.role === 'user' ? m.text : (
-                    <ReactMarkdown
-                      disallowedElements={['script', 'iframe', 'object', 'embed', 'link', 'meta', 'style']}
-                      unwrapDisallowed
-                    >
-                      {m.text}
-                    </ReactMarkdown>
+                    <ReactMarkdown>{sanitize(m.text)}</ReactMarkdown>
                   )}
                 </div>
               </div>
