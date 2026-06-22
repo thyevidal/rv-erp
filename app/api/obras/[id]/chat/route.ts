@@ -15,32 +15,21 @@ export async function POST(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
 
-  const admin = createAdminClient()
   const { id: obraId } = await params
 
-  // Busca org do usuário — mesmo padrão do route de orcamento-pdf
-  const { data: profile } = await admin
-    .from('profiles')
-    .select('organization_id')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile?.organization_id) {
-    return NextResponse.json({ error: 'Organização não encontrada.' }, { status: 403 })
-  }
-
-  // Filtra obra por id E organization_id — garante que pertence à org do usuário
-  const { data: obra, error: obraError } = await admin
+  // Usa o client com sessão do usuário — RLS garante que só retorna obras da org do usuário
+  // (mesmo padrão da página de detalhes da obra, que funciona corretamente)
+  const { data: obra } = await supabase
     .from('obras')
     .select('nome, cliente, endereco, cidade, uf, area_m2, prazo_dias, observacoes')
     .eq('id', obraId)
-    .eq('organization_id', profile.organization_id)
     .single()
 
   if (!obra) {
-    console.error('[chat] obra não encontrada', { obraId, orgId: profile.organization_id, obraError })
-    return NextResponse.json({ error: 'Obra não encontrada.', debug: { obraId, orgId: profile.organization_id, obraError } }, { status: 404 })
+    return NextResponse.json({ error: 'Obra não encontrada.' }, { status: 404 })
   }
+
+  const admin = createAdminClient()
 
   const body = await request.json()
   const { messages }: { messages: { role: 'user' | 'model'; text: string }[] } = body
