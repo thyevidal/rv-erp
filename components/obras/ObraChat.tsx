@@ -523,8 +523,13 @@ export default function ObraChat({ obraId }: { obraId: string }) {
     setLoading(true)
 
     try {
-      // Envia apenas os campos que a API espera (sem pendingChanges/applied)
-      const payload = next.map(m => ({ role: m.role, text: m.text }))
+      // Trunca mensagens do histórico para evitar payload gigante em conversas longas.
+      // A última mensagem (atual) nunca é truncada.
+      const MAX_HIST_CHARS = 600
+      const payload = next.map((m, idx) => ({
+        role: m.role,
+        text: idx < next.length - 1 ? m.text.slice(0, MAX_HIST_CHARS) : m.text,
+      }))
       const res = await fetch(`/api/obras/${obraId}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
