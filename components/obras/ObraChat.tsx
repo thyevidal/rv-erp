@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Bot, X, Send, Loader2, Sparkles, Trash2, Check, AlertCircle, CalendarDays, Receipt } from 'lucide-react'
+import { Bot, X, Send, Loader2, Sparkles, Trash2, Check, AlertCircle, CalendarDays, Receipt, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import ReactMarkdown from 'react-markdown'
-import type { PendingChanges, PendingCronogramaItem, PendingOrcamentoItem } from '@/lib/ai-types'
+import type { PendingChanges, PendingCronogramaItem, PendingOrcamentoItem, PendingDeleteItem, PendingUpdateOrcamentoItem, PendingUpdateCronogramaItem } from '@/lib/ai-types'
 
 interface Message {
   role: 'user' | 'model'
@@ -228,6 +228,260 @@ function OrcamentoCard({
   )
 }
 
+// ─── Card de exclusão de itens do orçamento ───────────────────────────────────
+
+function DeleteOrcamentoCard({
+  changes,
+  obraId,
+  onApplied,
+}: {
+  changes: Extract<PendingChanges, { type: 'delete_orcamento' }>
+  obraId: string
+  onApplied: () => void
+}) {
+  const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [errorMsg, setErrorMsg] = useState('')
+
+  async function apply() {
+    setState('loading')
+    try {
+      const res = await fetch(`/api/obras/${obraId}/apply-changes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pendingChanges: changes }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? `Erro ${res.status}`)
+      setState('done')
+      onApplied()
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Erro ao aplicar.')
+      setState('error')
+    }
+  }
+
+  const itens = changes.items as PendingDeleteItem[]
+
+  return (
+    <div className="mt-2 rounded-xl border border-destructive/30 bg-card overflow-hidden text-xs">
+      <div className="flex items-center gap-1.5 px-3 py-2 bg-destructive/5 border-b border-destructive/20">
+        <Trash2 className="w-3.5 h-3.5 text-destructive" />
+        <span className="font-semibold text-foreground">
+          Excluir {itens.length} item{itens.length !== 1 ? 'ns' : ''} do orçamento
+        </span>
+      </div>
+
+      <div className="max-h-36 overflow-y-auto">
+        {itens.map((i, idx) => (
+          <div key={idx} className="flex items-center gap-2 px-3 py-1.5 border-b last:border-0 hover:bg-muted/20">
+            <span className="flex-1 text-foreground">{i.descricao}</span>
+            {i.etapa && <span className="text-muted-foreground">{i.etapa}</span>}
+            {i.custo_total !== undefined && (
+              <span className="text-destructive font-medium">−{fmtBRL(i.custo_total)}</span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="px-3 py-2 flex items-center gap-2 border-t bg-muted/20">
+        {state === 'done' ? (
+          <span className="flex items-center gap-1.5 text-green-600 font-medium">
+            <Check className="w-3.5 h-3.5" /> Excluído com sucesso
+          </span>
+        ) : state === 'error' ? (
+          <span className="flex items-center gap-1.5 text-destructive font-medium">
+            <AlertCircle className="w-3.5 h-3.5" /> {errorMsg}
+          </span>
+        ) : (
+          <>
+            <Button
+              size="sm"
+              variant="destructive"
+              className="h-7 text-xs"
+              onClick={apply}
+              disabled={state === 'loading'}
+            >
+              {state === 'loading' ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+              Confirmar exclusão
+            </Button>
+            <span className="text-muted-foreground text-[10px]">Ação irreversível</span>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Card de edição de itens do orçamento ─────────────────────────────────────
+
+function UpdateOrcamentoCard({
+  changes,
+  obraId,
+  onApplied,
+}: {
+  changes: Extract<PendingChanges, { type: 'update_orcamento' }>
+  obraId: string
+  onApplied: () => void
+}) {
+  const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [errorMsg, setErrorMsg] = useState('')
+
+  async function apply() {
+    setState('loading')
+    try {
+      const res = await fetch(`/api/obras/${obraId}/apply-changes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pendingChanges: changes }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? `Erro ${res.status}`)
+      setState('done')
+      onApplied()
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Erro ao aplicar.')
+      setState('error')
+    }
+  }
+
+  const itens = changes.items as PendingUpdateOrcamentoItem[]
+
+  return (
+    <div className="mt-2 rounded-xl border bg-card overflow-hidden text-xs">
+      <div className="flex items-center gap-1.5 px-3 py-2 bg-primary/5 border-b">
+        <Pencil className="w-3.5 h-3.5 text-primary" />
+        <span className="font-semibold text-foreground">
+          Editar {itens.length} item{itens.length !== 1 ? 'ns' : ''} do orçamento
+        </span>
+      </div>
+
+      <div className="max-h-48 overflow-y-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b bg-muted/40">
+              <th className="text-left px-3 py-1.5 font-medium text-muted-foreground">Descrição</th>
+              <th className="text-right px-2 py-1.5 font-medium text-muted-foreground">Qtd</th>
+              <th className="text-right px-3 py-1.5 font-medium text-muted-foreground">Unitário</th>
+            </tr>
+          </thead>
+          <tbody>
+            {itens.map((i, idx) => (
+              <tr key={idx} className="border-b last:border-0 hover:bg-muted/20">
+                <td className="px-3 py-1.5 text-foreground">{i.descricao ?? '—'}</td>
+                <td className="px-2 py-1.5 text-right text-muted-foreground">{i.quantidade ?? '—'}</td>
+                <td className="px-3 py-1.5 text-right text-foreground font-medium">
+                  {i.custo_unitario_aplicado !== undefined ? fmtBRL(i.custo_unitario_aplicado) : '—'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="px-3 py-2 flex items-center gap-2 border-t bg-muted/20">
+        {state === 'done' ? (
+          <span className="flex items-center gap-1.5 text-green-600 font-medium">
+            <Check className="w-3.5 h-3.5" /> Atualizado com sucesso
+          </span>
+        ) : state === 'error' ? (
+          <span className="flex items-center gap-1.5 text-destructive font-medium">
+            <AlertCircle className="w-3.5 h-3.5" /> {errorMsg}
+          </span>
+        ) : (
+          <Button size="sm" className="h-7 text-xs" onClick={apply} disabled={state === 'loading'}>
+            {state === 'loading' ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+            Aplicar edições
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Card de edição de tarefas do cronograma ──────────────────────────────────
+
+function UpdateCronogramaCard({
+  changes,
+  obraId,
+  onApplied,
+}: {
+  changes: Extract<PendingChanges, { type: 'update_cronograma' }>
+  obraId: string
+  onApplied: () => void
+}) {
+  const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [errorMsg, setErrorMsg] = useState('')
+
+  async function apply() {
+    setState('loading')
+    try {
+      const res = await fetch(`/api/obras/${obraId}/apply-changes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pendingChanges: changes }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? `Erro ${res.status}`)
+      setState('done')
+      onApplied()
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Erro ao aplicar.')
+      setState('error')
+    }
+  }
+
+  const itens = changes.items as PendingUpdateCronogramaItem[]
+
+  return (
+    <div className="mt-2 rounded-xl border bg-card overflow-hidden text-xs">
+      <div className="flex items-center gap-1.5 px-3 py-2 bg-primary/5 border-b">
+        <Pencil className="w-3.5 h-3.5 text-primary" />
+        <span className="font-semibold text-foreground">
+          Editar {itens.length} tarefa{itens.length !== 1 ? 's' : ''} do cronograma
+        </span>
+      </div>
+
+      <div className="max-h-40 overflow-y-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b bg-muted/40">
+              <th className="text-left px-3 py-1.5 font-medium text-muted-foreground">Tarefa</th>
+              <th className="text-center px-2 py-1.5 font-medium text-muted-foreground">Início</th>
+              <th className="text-center px-2 py-1.5 font-medium text-muted-foreground">Fim</th>
+            </tr>
+          </thead>
+          <tbody>
+            {itens.map((t, idx) => (
+              <tr key={idx} className="border-b last:border-0 hover:bg-muted/20">
+                <td className="px-3 py-1.5 text-foreground">{t.tarefa ?? '—'}</td>
+                <td className="px-2 py-1.5 text-center text-muted-foreground">{fmtDate(t.data_prevista_inicio ?? null)}</td>
+                <td className="px-2 py-1.5 text-center text-muted-foreground">{fmtDate(t.data_prevista_fim ?? null)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="px-3 py-2 flex items-center gap-2 border-t bg-muted/20">
+        {state === 'done' ? (
+          <span className="flex items-center gap-1.5 text-green-600 font-medium">
+            <Check className="w-3.5 h-3.5" /> Atualizado com sucesso
+          </span>
+        ) : state === 'error' ? (
+          <span className="flex items-center gap-1.5 text-destructive font-medium">
+            <AlertCircle className="w-3.5 h-3.5" /> {errorMsg}
+          </span>
+        ) : (
+          <Button size="sm" className="h-7 text-xs" onClick={apply} disabled={state === 'loading'}>
+            {state === 'loading' ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+            Aplicar edições
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function ObraChat({ obraId }: { obraId: string }) {
@@ -394,18 +648,20 @@ export default function ObraChat({ obraId }: { obraId: string }) {
               {/* Card de confirmação (só para mensagens do modelo com pendingChanges) */}
               {m.role === 'model' && m.pendingChanges && !m.applied && (
                 <div className="w-full pl-8 pr-0">
-                  {m.pendingChanges.type === 'cronograma' ? (
-                    <CronogramaCard
-                      changes={m.pendingChanges as Extract<PendingChanges, { type: 'cronograma' }>}
-                      obraId={obraId}
-                      onApplied={() => markApplied(i)}
-                    />
-                  ) : (
-                    <OrcamentoCard
-                      changes={m.pendingChanges as Extract<PendingChanges, { type: 'orcamento' }>}
-                      obraId={obraId}
-                      onApplied={() => markApplied(i)}
-                    />
+                  {m.pendingChanges.type === 'cronograma' && (
+                    <CronogramaCard changes={m.pendingChanges as Extract<PendingChanges, { type: 'cronograma' }>} obraId={obraId} onApplied={() => markApplied(i)} />
+                  )}
+                  {m.pendingChanges.type === 'orcamento' && (
+                    <OrcamentoCard changes={m.pendingChanges as Extract<PendingChanges, { type: 'orcamento' }>} obraId={obraId} onApplied={() => markApplied(i)} />
+                  )}
+                  {m.pendingChanges.type === 'delete_orcamento' && (
+                    <DeleteOrcamentoCard changes={m.pendingChanges as Extract<PendingChanges, { type: 'delete_orcamento' }>} obraId={obraId} onApplied={() => markApplied(i)} />
+                  )}
+                  {m.pendingChanges.type === 'update_orcamento' && (
+                    <UpdateOrcamentoCard changes={m.pendingChanges as Extract<PendingChanges, { type: 'update_orcamento' }>} obraId={obraId} onApplied={() => markApplied(i)} />
+                  )}
+                  {m.pendingChanges.type === 'update_cronograma' && (
+                    <UpdateCronogramaCard changes={m.pendingChanges as Extract<PendingChanges, { type: 'update_cronograma' }>} obraId={obraId} onApplied={() => markApplied(i)} />
                   )}
                 </div>
               )}
