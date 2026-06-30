@@ -83,9 +83,13 @@ export async function POST(
   }
 
   const text = response.response.text()
+  const pendingChanges = allPendingChanges[0] ?? null
+
+  // Se o modelo chamou uma tool mas não gerou texto, usa fallback para o card aparecer
+  const reply = text || (pendingChanges ? 'Proposta gerada. Confira abaixo e clique em aplicar quando estiver de acordo.' : '')
 
   return NextResponse.json({
-    reply: text,
-    ...(allPendingChanges.length > 0 && { pendingChanges: allPendingChanges[0] }),
+    reply,
+    ...(pendingChanges && { pendingChanges }),
   })
 }

@@ -278,12 +278,12 @@ export default function ObraChat({ obraId }: { obraId: string }) {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? `Erro ${res.status}`)
-      if (data.reply) {
+      if (data.reply || data.pendingChanges) {
         setMessages(prev => [
           ...prev,
           {
             role: 'model',
-            text: data.reply,
+            text: data.reply || 'Proposta gerada. Confira abaixo e clique em aplicar quando estiver de acordo.',
             pendingChanges: data.pendingChanges ?? undefined,
           },
         ])
